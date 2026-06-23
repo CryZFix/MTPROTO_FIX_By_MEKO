@@ -18,9 +18,6 @@ log_info()    { echo -e "  ${BLUE}[i]${NC} $1"; }
 log_success() { echo -e "  ${GREEN}[✓]${NC} $1"; }
 log_error()   { echo -e "  ${RED}[✗]${NC} $1" >&2; }
 
-# ── Файл для хранения порта ─────────────────────────────────
-PORT_FILE="/opt/mtpr-simple/port"
-
 # ── Проверка root ────────────────────────────────────────────
 check_root() {
     if [ "$(id -u)" -ne 0 ]; then
@@ -29,7 +26,9 @@ check_root() {
     fi
 }
 
-# ── Определение порта из сохранённого файла ──────────────────
+# ── Файл для хранения порта ─────────────────────────────────
+PORT_FILE="/opt/mtpr-simple/port"
+
 get_saved_port() {
     if [ -f "$PORT_FILE" ]; then
         cat "$PORT_FILE"
@@ -42,14 +41,15 @@ save_port() {
     echo "$1" > "$PORT_FILE"
 }
 
-# ── Проверка наличия ЛЮБОГО SYN-правила (TCP + SYN) ──────────
+# ── ПРОВЕРКА НАЛИЧИЯ ЛЮБОГО ПРАВИЛА С tcp И syn ────────────
+# Ищем ВСЕ правила, где есть "tcp" и "syn" (регистр не важен)
 is_syn_fix_installed() {
-    # Проверяем в iptables-save на наличие строк с tcp и syn (регистр не важен)
-    if iptables-save 2>/dev/null | grep -iE 'tcp.*--syn|--syn.*tcp' | grep -q .; then
+    # Проверяем в iptables
+    if iptables-save 2>/dev/null | grep -iE 'tcp.*syn|syn.*tcp' | grep -q .; then
         return 0
     fi
     # Проверяем во всех .rules файлах в /etc/ufw/
-    if grep -rE 'tcp.*--syn|--syn.*tcp' /etc/ufw/ --include='*.rules' 2>/dev/null | grep -q .; then
+    if grep -rE 'tcp.*syn|syn.*tcp' /etc/ufw/ --include='*.rules' 2>/dev/null | grep -q .; then
         return 0
     fi
     return 1
@@ -57,9 +57,7 @@ is_syn_fix_installed() {
 
 # ── Определение Telemt ──────────────────────────────────────
 detect_telemt() {
-    # Ищем процесс telemt
     if pgrep -x telemt >/dev/null 2>&1; then
-        # Пытаемся найти конфиг
         local configs=(
             "/etc/telemt/telemt.toml"
             "/etc/telemt/config.toml"
@@ -69,7 +67,6 @@ detect_telemt() {
         )
         for cfg in "${configs[@]}"; do
             if [ -f "$cfg" ]; then
-                # Парсим порт
                 local port=$(grep -E '^port[[:space:]]*=' "$cfg" | head -1 | awk -F'=' '{print $2}' | tr -d ' "')
                 if [[ "$port" =~ ^[0-9]+$ ]]; then
                     echo "установлен (порт $port)"
@@ -101,7 +98,6 @@ install_syn_fix() {
 
     log_info "Установка SYN FIX на порт $port..."
 
-    # Убеждаемся, что ufw установлен и включен
     apt update
     apt install ufw -y
 
@@ -118,50 +114,43 @@ install_syn_fix() {
 -A ufw-before-input -p tcp --dport $port --syn -m hashlimit --hashlimit-name mtproto_$port --hashlimit-mode srcip --hashlimit-upto 54/minute --hashlimit-burst 1 --hashlimit-htable-expire 60000 --hashlimit-htable-size 32768 -m comment --comment \"mtpr_syn_fix\" -j ACCEPT\n\
 -A ufw-before-input -p tcp --dport $port --syn -j REJECT --reject-with tcp-reset" /etc/ufw/before.rules
 
-        # Если COMMIT не найден, добавляем в конец
         if ! grep -q 'mtpr_syn_fix' /etc/ufw/before.rules; then
-            log_info "COMMIT не найден, добавляем правила в конец before.rules"
+            log_info "COMMIT не найден, добавляем в конец before.rules"
             echo -e "\n# MTProxy SYN FIX by MEKO (mtpr_syn_fix)" >> /etc/ufw/before.rules
             echo "-A ufw-before-input -p tcp --dport $port --syn -m hashlimit --hashlimit-name mtproto_$port --hashlimit-mode srcip --hashlimit-upto 54/minute --hashlimit-burst 1 --hashlimit-htable-expire 60000 --hashlimit-htable-size 32768 -m comment --comment \"mtpr_syn_fix\" -j ACCEPT" >> /etc/ufw/before.rules
             echo "-A ufw-before-input -p tcp --dport $port --syn -j REJECT --reject-with tcp-reset" >> /etc/ufw/before.rules
         fi
     else
-        log_info "Наши правила уже присутствуют в before.rules"
+        log_info "Наши правила уже есть в before.rules"
     fi
 
-    # Сохраняем порт
     save_port "$port"
-
-    # Перезагружаем ufw
     ufw reload
 
     log_success "SYN FIX успешно установлен на порт $port"
 }
 
-# ── Удаление ВСЕХ SYN-правил (TCP + SYN) ──────────────────
+# ── Удаление ВСЕХ правил с tcp и syn ───────────────────────
 remove_syn_fix() {
-    log_info "Удаление всех SYN-правил (TCP + SYN)..."
+    log_info "Удаление всех правил с tcp и syn..."
 
     # 1. Удаляем из цепочки ufw-before-input в iptables
     local nums=()
     while IFS= read -r line; do
-        # Ищем строки с TCP и SYN (регистр не важен)
         if echo "$line" | grep -qiE 'tcp.*syn|syn.*tcp'; then
             num=$(echo "$line" | awk '{print $1}')
             nums+=("$num")
         fi
     done < <(iptables -L ufw-before-input --line-numbers -n 2>/dev/null)
 
-    # Удаляем в обратном порядке
     for num in $(printf '%s\n' "${nums[@]}" | sort -nr); do
         iptables -D ufw-before-input "$num" 2>/dev/null && log_info "Удалено правило #$num из iptables"
     done
 
-    # 2. Удаляем строки с SYN-правилами из всех .rules файлов в /etc/ufw/
+    # 2. Удаляем строки с tcp и syn из всех .rules файлов в /etc/ufw/
     find /etc/ufw/ -name '*.rules' -type f | while read -r file; do
         if grep -qiE 'tcp.*syn|syn.*tcp' "$file"; then
             cp "$file" "$file.bak.$(date +%s)"
-            # Удаляем строки, содержащие tcp и syn (в любом порядке)
             sed -i '/tcp.*syn/d' "$file"
             sed -i '/syn.*tcp/d' "$file"
             sed -i '/^$/d' "$file"
@@ -172,7 +161,7 @@ remove_syn_fix() {
     ufw reload
     rm -f "$PORT_FILE"
 
-    log_success "Все SYN-правила удалены"
+    log_success "Все правила с tcp и syn удалены"
 }
 
 # ── Пункт 2: Optimization (пока ничего не делает) ──────────
@@ -191,13 +180,19 @@ show_header() {
     echo -e "  ${BOLD}Простой менеджер SYN FIX${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
-    # Статус SYN FIX (любое правило)
+
+    # ВАЖНО: ПРОВЕРКА ПРЯМО ЗДЕСЬ, ПЕРЕД ВЫВОДОМ СТАТУСА
     if is_syn_fix_installed; then
-        echo -e "  ${BOLD}SYN FIX:${NC} ${GREEN}Установлен${NC}"
+        local port_info=$(get_saved_port)
+        if [ -n "$port_info" ]; then
+            echo -e "  ${BOLD}SYN FIX:${NC} ${GREEN}Установлен${NC} (порт $port_info)"
+        else
+            echo -e "  ${BOLD}SYN FIX:${NC} ${GREEN}Установлен${NC}"
+        fi
     else
         echo -e "  ${BOLD}SYN FIX:${NC} ${DIM}Не установлен${NC}"
     fi
-    # Статус Telemt
+
     telemt_status=$(detect_telemt)
     echo -e "  ${BOLD}Telemt:${NC} ${telemt_status}"
     echo ""
@@ -206,9 +201,11 @@ show_header() {
 # ── Главное меню ─────────────────────────────────────────────
 main_menu() {
     while true; do
+        # ПЕРЕД КАЖДЫМ ВЫВОДОМ МЕНЮ ВЫЗЫВАЕТСЯ show_header()
+        # А ВНУТРИ show_header() ВЫЗЫВАЕТСЯ is_syn_fix_installed()
+        # ТО ЕСТЬ ПРОВЕРКА ВСЕГДА ПЕРЕД ВЫВОДОМ
         show_header
 
-        # Динамическое имя пункта 1
         if is_syn_fix_installed; then
             local item1="${RED}Remove SYN FIX${NC}"
         else
@@ -227,7 +224,7 @@ main_menu() {
             1)
                 echo ""
                 if is_syn_fix_installed; then
-                    log_info "Обнаружены SYN-правила. Удалить ВСЕ такие правила?"
+                    log_info "Обнаружены правила с tcp и syn. Удалить их все?"
                     echo -en "  ${BOLD}Удалить? [y/N]:${NC} "
                     local confirm
                     read -r confirm
