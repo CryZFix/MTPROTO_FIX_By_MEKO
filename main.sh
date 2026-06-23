@@ -28,9 +28,15 @@ check_root() {
 
 # ── Проверка наличия ЛЮБОГО SYN-правила на порт 443 ────────
 is_syn_fix_installed() {
-    # Проверяем в iptables цепочку ufw-before-input
-    iptables-save 2>/dev/null | grep -E '^-A ufw-before-input.*-p tcp --dport 443.*--syn' | grep -q .
-    return $?
+    # Проверяем в iptables (все цепочки)
+    if iptables-save 2>/dev/null | grep -qE 'dpt:443.*SYN|SYN.*dpt:443'; then
+        return 0
+    fi
+    # Проверяем во всех .rules файлах в /etc/ufw/
+    if grep -rE '--dport 443.*--syn|--syn.*--dport 443' /etc/ufw/ --include='*.rules' 2>/dev/null | grep -q .; then
+        return 0
+    fi
+    return 1
 }
 
 # ── Установка НАШЕГО SYN FIX (без удаления чужих) ──────────
@@ -78,7 +84,7 @@ remove_syn_fix() {
     # 1. Удаляем из цепочки ufw-before-input в iptables
     local nums=()
     while IFS= read -r line; do
-        if echo "$line" | grep -q 'dpt:443' && echo "$line" | grep -q 'SYN'; then
+        if echo "$line" | grep -qE 'dpt:443.*SYN|SYN.*dpt:443'; then
             num=$(echo "$line" | awk '{print $1}')
             nums+=("$num")
         fi
@@ -89,16 +95,17 @@ remove_syn_fix() {
         iptables -D ufw-before-input "$num" 2>/dev/null && log_info "Удалено правило #$num из iptables"
     done
 
-    # 2. Удаляем строки с SYN-правилами из /etc/ufw/before.rules
-    if [ -f /etc/ufw/before.rules ]; then
-        cp /etc/ufw/before.rules /etc/ufw/before.rules.bak.$(date +%s)
-        # Удаляем строки, содержащие --dport 443 и --syn (любые)
-        sed -i '/--dport 443.*--syn/d' /etc/ufw/before.rules
-        # Также удаляем строки с комментариями, которые могут быть связаны (но оставляем другие)
-        sed -i '/#.*SYN.*443/d' /etc/ufw/before.rules
-        # Удаляем пустые строки
-        sed -i '/^$/d' /etc/ufw/before.rules
-    fi
+    # 2. Удаляем строки с SYN-правилами из всех .rules файлов в /etc/ufw/
+    find /etc/ufw/ -name '*.rules' -type f | while read -r file; do
+        if grep -qE '--dport 443.*--syn|--syn.*--dport 443' "$file"; then
+            cp "$file" "$file.bak.$(date +%s)"
+            sed -i '/--dport 443.*--syn/d' "$file"
+            sed -i '/--syn.*--dport 443/d' "$file"
+            # Удаляем пустые строки
+            sed -i '/^$/d' "$file"
+            log_info "Очищен файл: $file"
+        fi
+    done
 
     ufw reload
 
