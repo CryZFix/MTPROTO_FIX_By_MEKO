@@ -28,12 +28,12 @@ check_root() {
 
 # ── Проверка наличия ЛЮБОГО SYN-правила на порт 443 ────────
 is_syn_fix_installed() {
-    # Проверяем в iptables-save (регистронезависимо, ищем 443 и syn в одной строке)
-    if iptables-save 2>/dev/null | grep -qiE '443.*syn|syn.*443'; then
+    # Проверяем в iptables-save (ищем 443 и syn в одной строке)
+    if iptables-save 2>/dev/null | grep -iE '443.*syn|syn.*443' | grep -q .; then
         return 0
     fi
     # Проверяем во всех .rules файлах в /etc/ufw/
-    if grep -riE '443.*syn|syn.*443' /etc/ufw/ --include='*.rules' 2>/dev/null | grep -q .; then
+    if grep -rE '443.*syn|syn.*443' /etc/ufw/ --include='*.rules' 2>/dev/null | grep -q .; then
         return 0
     fi
     return 1
@@ -84,7 +84,7 @@ remove_syn_fix() {
     # 1. Удаляем из цепочки ufw-before-input в iptables
     local nums=()
     while IFS= read -r line; do
-        # Ищем строки, содержащие 443 и SYN (или syn) в любом регистре
+        # Ищем 443 и SYN в одной строке (регистр не важен)
         if echo "$line" | grep -qiE '443.*syn|syn.*443'; then
             num=$(echo "$line" | awk '{print $1}')
             nums+=("$num")
@@ -100,10 +100,8 @@ remove_syn_fix() {
     find /etc/ufw/ -name '*.rules' -type f | while read -r file; do
         if grep -qiE '443.*syn|syn.*443' "$file"; then
             cp "$file" "$file.bak.$(date +%s)"
-            # Удаляем строки, содержащие 443 и syn (регистронезависимо)
-            sed -i '/443.*syn/Id' "$file"
-            sed -i '/syn.*443/Id' "$file"
-            # Удаляем пустые строки
+            sed -i '/443.*syn/d' "$file"
+            sed -i '/syn.*443/d' "$file"
             sed -i '/^$/d' "$file"
             log_info "Очищен файл: $file"
         fi
@@ -141,6 +139,7 @@ show_header() {
 # ── Главное меню ─────────────────────────────────────────────
 main_menu() {
     while true; do
+        # ВАЖНО: ПРОВЕРКА ПЕРЕД КАЖДЫМ ПОКАЗОМ МЕНЮ
         show_header
 
         # Динамическое имя пункта 1
