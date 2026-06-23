@@ -1,24 +1,20 @@
 #!/bin/bash
+# Простой менеджер SYN FIX
+# Использование: curl -fsSL https://raw.githubusercontent.com/Mekotofeuka/MTPR-FIX-By-MEKO/main/install.sh | sudo bash
 
 set -e
 
-LOCAL_FILE="/opt/mtpr-simple/main.sh"
-VERSION_FILE="/opt/mtpr-simple/version"
+SCRIPT_URL="https://raw.githubusercontent.com/Mekotofeuka/MTPR-FIX-By-MEKO/main/main.sh"
 
 if [ "$(id -u)" -ne 0 ]; then
-    echo "root only"
+    echo "Запустите от root: curl -fsSL ... | sudo bash" >&2
     exit 1
 fi
 
 mkdir -p /opt/mtpr-simple
+curl -fsSL "$SCRIPT_URL" -o /opt/mtpr-simple/main.sh
+chmod +x /opt/mtpr-simple/main.sh
+ln -sf /opt/mtpr-simple/main.sh /usr/local/bin/mekopr
 
-curl -fsSL "https://raw.githubusercontent.com/Mekotofeuka/MTPR-FIX-By-MEKO/main/main.sh" -o "$LOCAL_FILE"
-
-chmod +x "$LOCAL_FILE"
-
-md5sum "$LOCAL_FILE" | awk '{print $1}' > "$VERSION_FILE"
-
-ln -sf "$LOCAL_FILE" /usr/local/bin/mekopr
-
-echo "OK installed"
-exec "$LOCAL_FILE" </dev/tty
+echo "Установка завершена. Запуск меню..."
+exec /opt/mtpr-simple/main.sh </dev/tty
