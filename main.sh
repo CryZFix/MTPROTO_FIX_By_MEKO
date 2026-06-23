@@ -42,14 +42,22 @@ save_port() {
 }
 
 # ── ПРОВЕРКА НАЛИЧИЯ ЛЮБОГО ПРАВИЛА С tcp И syn ────────────
-# Ищем ВСЕ правила, где есть "tcp" и "syn" (регистр не важен)
 is_syn_fix_installed() {
-    # Проверяем в iptables
     if iptables-save 2>/dev/null | grep -iE 'tcp.*syn|syn.*tcp' | grep -q .; then
         return 0
     fi
-    # Проверяем во всех .rules файлах в /etc/ufw/
     if grep -rE 'tcp.*syn|syn.*tcp' /etc/ufw/ --include='*.rules' 2>/dev/null | grep -q .; then
+        return 0
+    fi
+    return 1
+}
+
+# ── ПРОВЕРКА НАШЕГО ПРАВИЛА (по комментарию) ────────────────
+is_our_syn_fix_installed() {
+    if iptables-save 2>/dev/null | grep -q 'mtpr_syn_fix'; then
+        return 0
+    fi
+    if grep -r 'mtpr_syn_fix' /etc/ufw/ --include='*.rules' 2>/dev/null | grep -q .; then
         return 0
     fi
     return 1
@@ -69,12 +77,12 @@ detect_telemt() {
             if [ -f "$cfg" ]; then
                 local port=$(grep -E '^port[[:space:]]*=' "$cfg" | head -1 | awk -F'=' '{print $2}' | tr -d ' "')
                 if [[ "$port" =~ ^[0-9]+$ ]]; then
-                    echo "установлен (порт $port)"
+                    echo "Установлен (порт $port)"
                     return 0
                 fi
             fi
         done
-        echo "установлен (порт не определён)"
+        echo "Установлен (порт не определён)"
         return 0
     else
         echo "не обнаружен"
@@ -127,7 +135,7 @@ install_syn_fix() {
     save_port "$port"
     ufw reload
 
-    log_success "SYN FIX успешно установлен на порт $port"
+    log_success "SYN FIX успешно Установлен на порт $port"
 }
 
 # ── Удаление ВСЕХ правил с tcp и syn ───────────────────────
@@ -181,19 +189,24 @@ show_header() {
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
-    # ВАЖНО: ПРОВЕРКА ПРЯМО ЗДЕСЬ, ПЕРЕД ВЫВОДОМ СТАТУСА
+    # ── Статус SYN FIX ──────────────────────────────────────
     if is_syn_fix_installed; then
+        if is_our_syn_fix_installed; then
+            local label="Установлен (наш)"
+        else
+            local label="Установлен (другой)"
+        fi
         local port_info=$(get_saved_port)
         if [ -n "$port_info" ]; then
-            echo -e "  ${BOLD}SYN FIX:${NC} ${GREEN}Установлен${NC} (порт $port_info)"
+            echo -e "  ${BOLD}SYN FIX:${NC} ${GREEN}${label}${NC} (порт $port_info)"
         else
-            echo -e "  ${BOLD}SYN FIX:${NC} ${GREEN}Установлен${NC}"
+            echo -e "  ${BOLD}SYN FIX:${NC} ${GREEN}${label}${NC}"
         fi
     else
         echo -e "  ${BOLD}SYN FIX:${NC} ${DIM}Не установлен${NC}"
     fi
 
-    # Telemt — теперь с цветом: зелёным если установлен, красным если нет
+    # ── Статус Telemt ────────────────────────────────────────
     if pgrep -x telemt >/dev/null 2>&1; then
         local port_info=""
         local configs=(
@@ -213,9 +226,9 @@ show_header() {
             fi
         done
         if [ -n "$port_info" ]; then
-            echo -e "  ${BOLD}Telemt:${NC} ${GREEN}установлен${NC}$port_info"
+            echo -e "  ${BOLD}Telemt:${NC} ${GREEN}Установлен${NC}$port_info"
         else
-            echo -e "  ${BOLD}Telemt:${NC} ${GREEN}установлен${NC} (порт не определён)"
+            echo -e "  ${BOLD}Telemt:${NC} ${GREEN}Установлен${NC} (порт не определён)"
         fi
     else
         echo -e "  ${BOLD}Telemt:${NC} ${RED}не обнаружен${NC}"
@@ -227,9 +240,6 @@ show_header() {
 # ── Главное меню ─────────────────────────────────────────────
 main_menu() {
     while true; do
-        # ПЕРЕД КАЖДЫМ ВЫВОДОМ МЕНЮ ВЫЗЫВАЕТСЯ show_header()
-        # А ВНУТРИ show_header() ВЫЗЫВАЕТСЯ is_syn_fix_installed()
-        # ТО ЕСТЬ ПРОВЕРКА ВСЕГДА ПЕРЕД ВЫВОДОМ
         show_header
 
         if is_syn_fix_installed; then
