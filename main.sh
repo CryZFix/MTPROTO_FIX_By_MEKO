@@ -139,13 +139,14 @@ install_syn_fix() {
     echo ""
     echo -e "  ${BOLD}Что будет сделано:${NC}"
     echo -e "  • Установлен пакет ${CYAN}ufw${NC} (если не установлен)"
-    echo -e "  • Разрешены порты ${CYAN}22${NC} (SSH) и ${CYAN}$port${NC} (Telemt)"
+    echo -e "  • Разрешены порты ${CYAN}22${NC} (для вашего доступа по SSH) и ${CYAN}$port${NC} (для Telemt)"
     echo -e "  • Включен файрвол ${CYAN}ufw${NC}"
-    echo -e "  • Добавлены ${CYAN}4 правила iptables${NC} для защиты от SYN-атак"
-    echo -e "  • Правила добавлены в цепочку ${CYAN}ufw-before-input${NC}"
+    echo -e "  • Добавлены ${CYAN}4 правила iptables${NC} SYN"
+    echo -e "  • Правила будут добавлены в цепочку ${CYAN}ufw-before-input${NC}"
+    echo -e "  • Вы сможете удалить данную настройку через меню скрипта."
     echo ""
-    log_warning "${BOLD}ВНИМАНИЕ:${NC} Это изменит настройки файрвола системы!"
-    log_warning "Если у вас SSH не на порту 22, вы можете потерять доступ!"
+    log_warning "${BOLD}ВНИМАНИЕ:${NC} Данная настройка изменит файрвол системы."
+    log_warning "Если вы подключены не через SSH на порту 22, вы можете потерять доступ"
     echo ""
     echo -en "  ${BOLD}Продолжить установку? [y/N]:${NC} "
     local confirm
@@ -346,7 +347,7 @@ clear_screen() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.62${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.63${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
