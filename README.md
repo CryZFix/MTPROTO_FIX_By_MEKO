@@ -8,8 +8,9 @@
 - Ставится в один клик
 
 # Быстрый старт:
+
 1. Установить стандартный Telemt
-2.Установить/обновить наш скрипт:
+2. Установить/обновить наш скрипт:
 ```Bash
 curl -fsSL https://raw.githubusercontent.com/Mekotofeuka/MTPR-FIX-By-MEKO/main/install.sh | sudo bash
 ```
