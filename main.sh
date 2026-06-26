@@ -128,33 +128,62 @@ is_our_syn_fix_installed() {
     is_syn_fix_installed
 }
 
-# ── ПРОВЕРКА НАЛИЧИЯ MSS В КОНФИГЕ TELEMT ──────────────────
+# ── ПРОВЕРКА НАЛИЧИЯ MSS И SYN_LIMIT В КОНФИГЕ TELEMT ──────
 is_mss_enabled() {
     local config="$CONFIG_TELEMT"
     if [ -f "$config" ]; then
-        if grep -qi 'mss' "$config" | grep -v '^#' | grep -q .; then
+        if grep -qE '^[[:space:]]*client_mss[[:space:]]*=' "$config" | grep -v '^#' | grep -q .; then
             return 0
         fi
     fi
     return 1
 }
 
-# ── ОТКЛЮЧЕНИЕ MSS (закомментирование строк с mss) ────────
-disable_mss() {
+is_synlimit_enabled() {
+    local config="$CONFIG_TELEMT"
+    if [ -f "$config" ]; then
+        if grep -qE '^[[:space:]]*synlimit[[:space:]]*=' "$config" | grep -v '^#' | grep -q .; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+are_bad_options_enabled() {
+    if is_mss_enabled || is_synlimit_enabled; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# ── ОТКЛЮЧЕНИЕ MSS И SYN_LIMIT (закомментирование строк) ──
+disable_bad_options() {
     local config="$CONFIG_TELEMT"
     if [ ! -f "$config" ]; then
         log_error "Файл $config не найден"
         return 1
     fi
 
-    if ! is_mss_enabled; then
-        log_info "MSS уже отключен"
-        return 0
+    local changed=0
+
+    # Отключаем MSS
+    if grep -qE '^[[:space:]]*client_mss[[:space:]]*=' "$config" | grep -v '^#' | grep -q .; then
+        sed -i 's/^[[:space:]]*\(client_mss[[:space:]]*=\)/#\1/i' "$config"
+        changed=1
     fi
 
-    log_info "Отключение MSS в $config..."
-    sed -i 's/^[[:space:]]*\(.*mss.*\)/#\1/i' "$config"
-    log_success "MSS отключен (строки с mss закомментированы)"
+    # Отключаем synlimit
+    if grep -qE '^[[:space:]]*synlimit[[:space:]]*=' "$config" | grep -v '^#' | grep -q .; then
+        sed -i 's/^[[:space:]]*\(synlimit[[:space:]]*=\)/#\1/i' "$config"
+        changed=1
+    fi
+
+    if [ "$changed" -eq 1 ]; then
+        log_success "MSS и synlimit отключены (строки закомментированы)"
+    else
+        log_info "Активные строки client_mss или synlimit не найдены"
+    fi
 }
 
 # ── Установка iptables-persistent (если отсутствует) ────────
@@ -295,22 +324,22 @@ remove_syn_fix() {
     log_success "SYN FIX удалён"
 }
 
-# ── Пункт 2: Отключение MSS ────────────────────────────────
+# ── Пункт 2: Отключение MSS и synlimit ─────────────────────
 apply_optimization() {
-    if is_mss_enabled; then
+    if are_bad_options_enabled; then
         echo ""
-        log_info "Обнаружены активные строки с MSS в $CONFIG_TELEMT"
-        echo -en "  ${BOLD}Отключить MSS? [Y/n]:${NC} "
+        log_info "Обнаружены активные строки с client_mss или synlimit в $CONFIG_TELEMT"
+        echo -en "  ${BOLD}Отключить их? [Y/n]:${NC} "
         local confirm
         read -r confirm
         if [[ -z "$confirm" || "$confirm" =~ ^[yY]$ ]]; then
-            disable_mss
+            disable_bad_options
         else
             log_info "Отмена"
         fi
     else
         echo ""
-        log_info "MSS уже отключен или отсутствует в конфиге"
+        log_info "client_mss и synlimit уже отключены или отсутствуют в конфиге"
         echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
         read -rsn1
     fi
@@ -458,7 +487,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.78${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.80${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
@@ -524,12 +553,20 @@ show_header() {
         echo -e "  ${BOLD}Версия Telemt:${NC} $version_display"
         echo -e "  ${BOLD}Подключено к прокси:${NC} ${CYAN}$online_count${NC} человек"
 
-        # Статус MSS
+        # Статус MSS и synlimit
+        local mss_status=""
+        local synlimit_status=""
         if is_mss_enabled; then
-            echo -e "  ${BOLD}MSS:${NC} ${RED}включен${NC}"
+            mss_status="${RED}включен${NC}"
         else
-            echo -e "  ${BOLD}MSS:${NC} ${GREEN}Отключен${NC}"
+            mss_status="${GREEN}отключен${NC}"
         fi
+        if is_synlimit_enabled; then
+            synlimit_status="${RED}включен${NC}"
+        else
+            synlimit_status="${GREEN}отключен${NC}"
+        fi
+        echo -e "  ${BOLD}MSS:${NC} $mss_status  |  ${BOLD}synlimit:${NC} $synlimit_status"
     else
         echo -e "  ${BOLD}Telemt:${NC} ${RED}не обнаружен${NC}"
     fi
@@ -548,11 +585,11 @@ main_menu() {
             local item1="${GREEN}Установить SYN FIX${NC}"
         fi
 
-        # Проверяем статус MSS для пункта 2
-        if is_mss_enabled; then
-            local item2="${CYAN}Отключить MSS${NC}"
+        # Проверяем статус для пункта 2
+        if are_bad_options_enabled; then
+            local item2="${CYAN}Отключить MSS и synlimit${NC}"
         else
-            local item2="${GRAY}Отключить MSS (уже отключен)${NC}"
+            local item2="${GRAY}Отключить MSS и synlimit (уже отключены)${NC}"
         fi
 
         echo -e "  ${CYAN}[1]${NC}  $item1"
@@ -588,10 +625,10 @@ main_menu() {
             ;;
         2)
             echo ""
-            if is_mss_enabled; then
+            if are_bad_options_enabled; then
                 apply_optimization
             else
-                log_info "MSS уже отключен"
+                log_info "MSS и synlimit уже отключены"
                 echo ""
                 read -rsn1 -p "  Нажмите любую клавишу для возврата в меню..."
             fi
