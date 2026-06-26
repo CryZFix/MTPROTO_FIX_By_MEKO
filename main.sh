@@ -8,7 +8,7 @@ CONFIG_PATH_FILE="/opt/mtpr-simple/config_path"
 if [ -f "$CONFIG_PATH_FILE" ] && [ -s "$CONFIG_PATH_FILE" ]; then
     DEFAULT_CONFIG_TELEMT=$(cat "$CONFIG_PATH_FILE")
 else
-    DEFAULT_CONFIG_TELEMT="/etc/telemt/config.toml"
+    DEFAULT_CONFIG_TELEMT="/etc/telemt/telemt.toml"
     echo -en "Укажите путь к конфигу Telemt (По умолчанию: [${DEFAULT_CONFIG_TELEMT}] если не меняли - нажмите Enter): "
     read -r CONFIG_TELEMT_INPUT
 
@@ -398,7 +398,7 @@ clear_screen() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.74${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.75${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
