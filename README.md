@@ -42,7 +42,8 @@ mekopr
 
 💰 **Криптовалюта:**  
 
-[![Поддержать проект](https://cdn4.telesco.pe/file/ir6J9wZBdI4Awllfusv8Q9erj5UrcsNfQGY1VFkRd8_qe8IosjtPgSMKzeInCZIiguSsGYUfAyqcSt-8j0gfgt3yCjc6oF0BxoqhVWMm01P5hiMykAZcGkmQE9MCk32qCp3ZVtfrVe5P7gIw7pWAz_V3w1g8iNNodtMhRtL4H7MSM2es9toIIDfbR2rEq5cYJkBgSYYsYz97hZaqngdJh1RjFPnurgcdnEup8lfLgsz2l3Cn0Gph22wpVafwgCAfAwB2TqCMp3vgVkwk2_TW8nbtAEUA6OC3IeojEAklNIziA5oBflpq9wolKmc8bezyP97X6LvkjbNL7ueLioQoNw.jpg)](https://t.me/send?start=IVlaFvgWdkxH)
+[![Поддержать проект](<img width="300" height="300" alt="image" src="https://github.com/user-attachments/assets/b910c839-ec45-486d-b7f0-05da8de41b74" />
+)](https://t.me/send?start=IVlaFvgWdkxH)
 
 от **0.1 USDT**
 
