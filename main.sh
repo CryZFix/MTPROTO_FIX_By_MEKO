@@ -684,13 +684,13 @@ show_header() {
     # Формируем статусную строку
     local status_line=""
     if [ "$telemt_installed" = true ] && [ "$mtprotozig_installed" = true ]; then
-        status_line="Telemt: ${GREEN}установлен${NC} | Mtproto.zig: ${GREEN}установлен${NC}"
+        status_line="Telemt: ${GREEN}установлен${NC}${BOLD} | Mtproto.zig: ${GREEN}установлен${NC}"
     elif [ "$telemt_installed" = true ]; then
-        status_line="Telemt: ${GREEN}установлен${NC} | Mtproto.zig: ${GRAY}не обнаружен${NC}"
+        status_line="Telemt: ${GREEN}установлен${NC}${BOLD} | Mtproto.zig: ${GRAY}не обнаружен${NC}"
     elif [ "$mtprotozig_installed" = true ]; then
-        status_line="Telemt: ${GRAY}не обнаружен${NC} | Mtproto.zig: ${GREEN}установлен${NC}"
+        status_line="Telemt: ${GRAY}не обнаружен${NC}${BOLD} | Mtproto.zig: ${GREEN}установлен${NC}"
     else
-        status_line="Telemt: ${RED}не обнаружен${NC} | Mtproto.zig: ${RED}не обнаружен${NC}"
+        status_line="Telemt: ${RED}не обнаружен${NC}${BOLD} | Mtproto.zig: ${RED}не обнаружен${NC}"
     fi
     echo -e "  ${BOLD}${status_line}${NC}"
 
