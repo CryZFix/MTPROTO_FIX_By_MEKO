@@ -654,7 +654,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.88${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.89${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
@@ -770,7 +770,7 @@ show_header() {
     if [ "$mtprotozig_installed" = true ]; then
         local online_count=$(get_mtprotozig_online)
         if [ -n "$online_count" ] && [ "$online_count" -ge 0 ] 2>/dev/null; then
-            echo -e "  ${BOLD}Подключено к прокси Mtproto.zig:${NC} ${CYAN}$online_count${NC}${BOLD} человек"
+            echo -e "  ${BOLD}Подключено к прокси Mtproto.zig:${NC} ${CYAN}$online_count${NC} человек"
         else
             echo -e "  ${BOLD}Подключено к прокси Mtproto.zig:${NC} ${CYAN}0${NC} человек"
         fi
@@ -943,13 +943,28 @@ update_script() {
 
     echo ""
     echo -e "  ${YELLOW}[!]${NC} Удаляем текущую версию..."
+
+    # ── Удаляем старые файлы, но сохраняем порт ──────────────
     remove_syn_fix
     rm -f "$0"
 
     echo ""
-    echo -e "  ${GREEN}[✓]${NC} Скачиваем новую версию..."
+    echo -e "  ${GREEN}[✓]${NC} Скачиваем новую версию main.sh..."
     if curl -fsSL "$url" -o "$temp"; then
         chmod +x "$temp"
+
+        # ── Скачиваем также все файлы из папки proxys ──────────
+        echo -e "  ${GREEN}[✓]${NC} Скачиваем файлы прокси-меню..."
+        local proxy_files=("proxys/proxymenu.sh" "proxys/telemt1.sh" "proxys/mtprotozig1.sh")
+        mkdir -p /opt/mtpr-simple/proxys
+        for pfile in "${proxy_files[@]}"; do
+            if curl -fsSL "https://raw.githubusercontent.com/Mekotofeuka/MTPROTO_FIX_By_MEKO/main/$pfile" -o "/opt/mtpr-simple/$pfile"; then
+                echo -e "    ${GREEN}✓${NC} $(basename "$pfile")"
+            else
+                echo -e "    ${RED}✗${NC} $(basename "$pfile") — ошибка"
+            fi
+        done
+        chmod +x /opt/mtpr-simple/proxys/*.sh
 
         if mv "$temp" "$0"; then
             echo -e "  ${GREEN}[✓]${NC} Обновление успешно. Перезапускаемся..."
@@ -961,7 +976,7 @@ update_script() {
             exit 1
         fi
     else
-        echo -e "  ${RED}[✗]${NC} Ошибка скачивания"
+        echo -e "  ${RED}[✗]${NC} Ошибка скачивания main.sh"
         rm -f "$temp"
         echo -e "  ${YELLOW}Продолжить запуск из исходного файла? [Y/n]:${NC} "
         read -r confirm
