@@ -67,7 +67,7 @@ install_proxy() {
         n|N)
             echo ""
             echo -e "  ${GRAY}Возврат в меню...${NC}"
-            sleep 1
+            sleep 0.1
             return 0
             ;;
         *)
@@ -210,7 +210,7 @@ while true; do
             ;;
         *)
             echo "  Неверный выбор"
-            sleep 1
+            sleep 0.1
             ;;
     esac
 done
