@@ -131,12 +131,37 @@ edit_config() {
     
     echo ""
     echo -e "  ${BLUE}[i]${NC} Открытие конфига: $config_path"
-    echo -e "  ${GRAY}После редактирования сохраните файл (Ctrl+O) и закройте (Ctrl+X)${NC}"
-    echo ""
-    echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
-    read -rsn1
     
-    sudo nano "$config_path"
+    # Проверяем, доступен ли редактор
+    if command -v nano >/dev/null 2>&1; then
+        echo -e "  ${GRAY}После редактирования сохраните файл (Ctrl+O) и закройте (Ctrl+X)${NC}"
+        echo ""
+        echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
+        read -rsn1
+        sudo nano "$config_path"
+    elif command -v vim >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}[!]${NC} nano не установлен. Используем vim для открытия файла."
+        echo -e "  ${GRAY}Для сохранения: нажмите ESC, затем введите :wq и Enter${NC}"
+        echo -e "  ${GRAY}Для выхода без сохранения: ESC, затем :q! и Enter${NC}"
+        echo ""
+        echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
+        read -rsn1
+        sudo vim "$config_path"
+    elif command -v vi >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}[!]${NC} Использую vi."
+        echo -e "  ${GRAY}Для сохранения: нажмите ESC, затем введите :wq и Enter${NC}"
+        echo ""
+        echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
+        read -rsn1
+        sudo vi "$config_path"
+    else
+        echo -e "  ${RED}[✗]${NC} Ни один редактор не найден (nano, vim, vi)"
+        echo -e "  ${GRAY}Установите один из редакторов: apt install nano или vim${NC}"
+        echo ""
+        echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+        read -rsn1
+        return 1
+    fi
     
     echo ""
     echo -e "  ${GREEN}[✓]${NC} Редактирование завершено"
@@ -215,7 +240,7 @@ purge_proxy() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}MTProtoZig меню v0.21${NC}"
+    echo -e "  ${BOLD}MTProtoZig меню v0.22${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
     echo -e "  ${CYAN}[1]${NC}  ${BOLD}Установить Zig CLI${NC}"
