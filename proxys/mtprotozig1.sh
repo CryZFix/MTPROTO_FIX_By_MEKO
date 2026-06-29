@@ -12,6 +12,32 @@ BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m'
 
+# ── Функция проверки, установлен ли MTProtoZig ──────────────
+is_mtprotozig_installed() {
+    if command -v mtbuddy >/dev/null 2>&1; then
+        return 0
+    fi
+    if systemctl is-active --quiet mtproto-proxy 2>/dev/null; then
+        return 0
+    fi
+    if pgrep -x mtbuddy >/dev/null 2>&1; then
+        return 0
+    fi
+    if [ -f "/opt/mtproto-proxy/config.toml" ]; then
+        return 0
+    fi
+    return 1
+}
+
+# ── Функция получения ссылки для подключения ────────────────
+get_proxy_link() {
+    if command -v mtbuddy >/dev/null 2>&1; then
+        sudo mtbuddy links 2>/dev/null | grep -E '^  fakeTLS tg:' | head -1 | awk '{print $3}'
+    else
+        echo ""
+    fi
+}
+
 # ── Функция установки Zig CLI ──────────────────────────────
 install_zig_cli() {
     echo ""
@@ -134,6 +160,19 @@ restart_proxy() {
     read -rsn1
 }
 
+# ── Функция просмотра логов ──────────────────────────────────
+view_logs() {
+    echo ""
+    echo -e "  ${BLUE}[i]${NC} Просмотр логов MTProtoZig (Ctrl+C для выхода)..."
+    echo ""
+    echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
+    read -rsn1
+    sudo journalctl -u mtproto-proxy -f
+    echo ""
+    echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+    read -rsn1
+}
+
 # ── Функция удаления прокси ──────────────────────────────────
 purge_proxy() {
     echo ""
@@ -144,7 +183,7 @@ purge_proxy() {
     echo -e "  • Конфигурационные файлы"
     echo -e "  • Systemd служба"
     echo ""
-    log_warning "Это действие нельзя отменить!"
+    echo -e "  ${YELLOW}[!]${NC} Это действие нельзя отменить!"
     echo -en "  ${BOLD}Продолжить удаление? [y/N]:${NC} "
     local confirm
     read -r confirm
@@ -176,16 +215,31 @@ purge_proxy() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}MTProtoZig меню V0.1${NC}"
+    echo -e "  ${BOLD}MTProtoZig меню v0.2${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
-    echo -e "  ${CYAN}[1]${NC}${BOLD}  Установить Zig CLI"
-    echo -e "  ${CYAN}[2]${NC}${BOLD}  Установить прокси"
-    echo -e "  ${CYAN}[3]${NC}${BOLD}  Открыть конфиг"
-    echo -e "  ${CYAN}[4]${NC}${BOLD}  Перезапустить прокси"
-    echo -e "  ${RED}[5]${BOLD}  Удалить MTProtoZig"
-    echo -e "  ${CYAN}[0]${NC}${BOLD}  Назад в прокси меню"
+    echo -e "  ${CYAN}[1]${NC}  ${BOLD}Установить Zig CLI${NC}"
+    echo -e "  ${CYAN}[2]${NC}  ${BOLD}Установить прокси${NC}"
+    echo -e "  ${CYAN}[3]${NC}  ${BOLD}Открыть конфиг${NC}"
+    echo -e "  ${CYAN}[4]${NC}  ${BOLD}Перезапустить прокси${NC}"
+    echo -e "  ${CYAN}[5]${NC}  ${BOLD}Смотреть логи${NC}"
+    echo -e "  ${RED}[6]${RED}  ${BOLD}Удалить MTProtoZig${NC}"
+    echo -e "  ${CYAN}[0]${NC}  ${BOLD}Назад в прокси меню${NC}"
     echo ""
+
+    # Проверяем, установлен ли MTProtoZig, и показываем соответствующий статус
+    if is_mtprotozig_installed; then
+        echo -e "  ${DIM}Текущий путь к конфигу: /opt/mtproto-proxy/config.toml${NC}"
+        # Показываем ссылку для подключения
+        local proxy_link=$(get_proxy_link)
+        if [ -n "$proxy_link" ]; then
+            echo -e "  ${DIM}Ссылка для подключения: ${CYAN}${proxy_link}${NC}"
+        fi
+    else
+        echo -e "  ${YELLOW}MTProtoZig не установлен${NC}"
+    fi
+    echo ""
+
     echo -en "  ${BOLD}Выбор:${NC} "
     read -r choice
 
@@ -203,6 +257,9 @@ while true; do
             restart_proxy
             ;;
         5)
+            view_logs
+            ;;
+        6)
             purge_proxy
             ;;
         0)
