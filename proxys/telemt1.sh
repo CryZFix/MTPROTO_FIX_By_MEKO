@@ -88,19 +88,19 @@ install_telemt() {
     echo ""
     echo -e "  ${BLUE}[i]${NC} Установка Telemt"
     echo ""
-    echo -e "  ${BOLD}Доступные варианты:${NC}"
-    echo -e "  ${GREEN}[Enter]${NC} — установить последнюю версию"
-    echo -e "  ${GREEN}[версия]${NC} — например, 3.4.18"
-    echo -e "  ${GRAY}[N/n]${NC} — отмена"
+    echo -e "  ${NC}${BOLD}Выберите какую версию TELEMT вы хотите установить:${NC}"
+    echo -e "  ${GREEN}[Enter]${NC}${BOLD} — установить самую последнюю версию"
+    echo -e "  ${NC}${BOLD}Либо введите любую версию в формате: ${GREEN}3.4.18"
+    echo -e "  ${RED}[N/n]${NC}${BOLD} — назад"
     echo ""
-    echo -en "  ${BOLD}Введите номер версии или нажмите Enter для последней:${NC} "
+    echo -en "  ${NC}${BOLD}Ввод:${NC} "
     read -r version_input
 
     if [[ "$version_input" =~ ^[Nn]$ ]]; then
         echo ""
         echo -e "  ${GRAY}Установка отменена${NC}"
         echo ""
-        echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+        echo -e "  ${GRAY}${BOLD}Нажмите любую клавишу для возврата в меню...${NC}"
         read -rsn1
         return 0
     fi
@@ -237,7 +237,7 @@ restart_telemt() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}Telemt меню v0.3${NC}"
+    echo -e "  ${BOLD}Telemt меню v0.4${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
     echo -e "  ${CYAN}[1]${NC}  ${BOLD}Установить Telemt${NC}"
