@@ -1,15 +1,26 @@
 #!/bin/bash
 # proxymenu.sh
 
+# ── Цвета ─────────────────────────────────────────────────────
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+GRAY='\033[0;90m'
+BOLD='\033[1m'
+DIM='\033[2m'
+NC='\033[0m'
+
 while true; do
     clear
     echo ""
     echo -e "  ${BOLD}Прокси меню${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
-    echo -e "  ${CYAN}[1]${NC}  Меню работы с Telemt"
-    echo -e "  ${CYAN}[2]${NC}  Меню работы с MTProtoZig"
-    echo -e "  ${CYAN}[0]${NC}  Назад в главное меню"
+    echo -e "  ${CYAN}[1]${NC}  ${BOLD}Меню работы с Telemt${NC}"
+    echo -e "  ${CYAN}[2]${NC}  ${BOLD}Меню работы с MTProtoZig${NC}"
+    echo -e "  ${RED}[0]${NC}  ${BOLD}Назад в главное меню${NC}"
     echo ""
     echo -en "  ${BOLD}Выбор:${NC} "
     read -r choice
