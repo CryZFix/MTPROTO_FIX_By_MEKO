@@ -596,10 +596,38 @@ clear_screen() {
     clear 2>/dev/null || printf '\033[2J\033[H'
 }
 
+# ── Функция проверки установки Telemt ──────────────────────
+is_telemt_installed() {
+    command -v telemt >/dev/null 2>&1
+}
+
+# ── Функция проверки установки MTProtoZig ──────────────────
+is_mtprotozig_installed() {
+    command -v mtbuddy >/dev/null 2>&1
+}
+
 # ── Функция получения версии Telemt ─────────────────────────
 get_telemt_version() {
     if command -v telemt >/dev/null 2>&1; then
         telemt --version 2>/dev/null | head -1 | awk '{print $2}'
+    else
+        echo ""
+    fi
+}
+
+# ── Функция получения онлайна Telemt ────────────────────────
+get_telemt_online() {
+    if is_telemt_installed; then
+        curl -s http://127.0.0.1:9091/v1/stats/users/active-ips 2>/dev/null | grep -o '"active_ips":\[[^]]*\]' | grep -o '[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}' | wc -l | tr -d ' '
+    else
+        echo ""
+    fi
+}
+
+# ── Функция получения онлайна MTProtoZig ────────────────────
+get_mtprotozig_online() {
+    if is_mtprotozig_installed; then
+        sudo journalctl -u mtproto-proxy -n 50 2>/dev/null | grep -o 'users_total=[0-9]*' | tail -1 | cut -d'=' -f2
     else
         echo ""
     fi
@@ -620,7 +648,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.83${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.84${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
@@ -642,8 +670,32 @@ show_header() {
         echo -e "  ${BOLD}SYN FIX:${NC} ${RED}Не установлен${NC}"
     fi
 
-    # Telemt
-    if pgrep -x telemt >/dev/null 2>&1; then
+    # Проверяем установку Telemt и MTProtoZig
+    local telemt_installed=false
+    local mtprotozig_installed=false
+    
+    if is_telemt_installed; then
+        telemt_installed=true
+    fi
+    if is_mtprotozig_installed; then
+        mtprotozig_installed=true
+    fi
+
+    # Формируем статусную строку
+    local status_line=""
+    if [ "$telemt_installed" = true ] && [ "$mtprotozig_installed" = true ]; then
+        status_line="Telemt: ${GREEN}установлен${NC} | Mtproto.zig: ${GREEN}установлен${NC}"
+    elif [ "$telemt_installed" = true ]; then
+        status_line="Telemt: ${GREEN}установлен${NC} | Mtproto.zig: ${GRAY}не обнаружен${NC}"
+    elif [ "$mtprotozig_installed" = true ]; then
+        status_line="Telemt: ${GRAY}не обнаружен${NC} | Mtproto.zig: ${GREEN}установлен${NC}"
+    else
+        status_line="Telemt: ${RED}не обнаружен${NC} | Mtproto.zig: ${RED}не обнаружен${NC}"
+    fi
+    echo -e "  ${BOLD}${status_line}${NC}"
+
+    # Если установлен Telemt - показываем детали
+    if [ "$telemt_installed" = true ]; then
         local port_display=""
         if [ -n "$CONFIG_TELEMT" ] && [ -f "$CONFIG_TELEMT" ]; then
             local port=$(grep -E '^port[[:space:]]*=' "$CONFIG_TELEMT" | head -1 | awk -F'=' '{print $2}' | tr -d ' "')
@@ -673,11 +725,11 @@ show_header() {
         fi
 
         # Получаем количество уникальных IP
-        local online_count=$(get_online_count)
+        local online_count=$(get_telemt_online)
 
         echo -e "  ${BOLD}Telemt:${NC} ${GREEN}Установлен${NC}${port_display}"
         echo -e "  ${BOLD}Версия Telemt:${NC} $version_display"
-        echo -e "  ${BOLD}Подключено к прокси:${NC} ${CYAN}$online_count${NC} человек"
+        echo -e "  ${BOLD}Подключено к прокси (Telemt):${NC} ${CYAN}$online_count${NC} человек"
 
         # Статус MSS и synlimit
         local mss_status=""
@@ -693,8 +745,16 @@ show_header() {
             synlimit_status="${GREEN}отключен${NC}"
         fi
         echo -e "  ${BOLD}Встроенный MSS:${NC} $mss_status  |  ${BOLD}Встроенный synlimit:${NC} $synlimit_status"
-    else
-        echo -e "  ${BOLD}Telemt:${NC} ${RED}не обнаружен${NC}"
+    fi
+
+    # Если установлен MTProtoZig - показываем онлайн
+    if [ "$mtprotozig_installed" = true ]; then
+        local online_count=$(get_mtprotozig_online)
+        if [ -n "$online_count" ] && [ "$online_count" -ge 0 ] 2>/dev/null; then
+            echo -e "  ${BOLD}Подключено к прокси (Mtproto.zig):${NC} ${CYAN}$online_count${NC} человек"
+        else
+            echo -e "  ${BOLD}Подключено к прокси (Mtproto.zig):${NC} ${CYAN}0${NC} человек"
+        fi
     fi
 
     echo ""
