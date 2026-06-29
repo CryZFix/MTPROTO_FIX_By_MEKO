@@ -205,20 +205,35 @@ edit_config() {
     echo ""
     echo -e "  ${BLUE}[i]${NC} Открытие конфига: $config_path"
     
-    # Проверяем, доступен ли nano
+    # Проверяем, доступен ли редактор
     if command -v nano >/dev/null 2>&1; then
         echo -e "  ${GRAY}После редактирования сохраните файл (Ctrl+O) и закройте (Ctrl+X)${NC}"
         echo ""
         echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
         read -rsn1
         nano "$config_path"
-    else
-        echo -e "  ${YELLOW}[!]${NC} nano не установлен. Использую vi..."
-        echo -e "  ${GRAY}После редактирования сохраните файл (:wq) и закройте (:q)${NC}"
+    elif command -v vim >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}[!]${NC} nano не установлен. Используем vim для открытия файла."
+        echo -e "  ${GRAY}Для сохранения: нажмите ESC, затем введите :wq и Enter${NC}"
+        echo -e "  ${GRAY}Для выхода без сохранения: ESC, затем :q! и Enter${NC}"
+        echo ""
+        echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
+        read -rsn1
+        vim "$config_path"
+    elif command -v vi >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}[!]${NC} Использую vi."
+        echo -e "  ${GRAY}Для сохранения: нажмите ESC, затем введите :wq и Enter${NC}"
         echo ""
         echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
         read -rsn1
         vi "$config_path"
+    else
+        echo -e "  ${RED}[✗]${NC} Ни один редактор не найден (nano, vim, vi)"
+        echo -e "  ${GRAY}Установите один из редакторов: apt install nano или vim${NC}"
+        echo ""
+        echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+        read -rsn1
+        return 1
     fi
     
     echo ""
@@ -247,7 +262,7 @@ restart_telemt() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}Telemt меню v0.41${NC}"
+    echo -e "  ${BOLD}Telemt меню v0.42${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
     echo -e "  ${CYAN}[1]${NC}  ${BOLD}Установить Telemt${NC}"
