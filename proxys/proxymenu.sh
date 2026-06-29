@@ -51,7 +51,7 @@ while true; do
             ;;
         *)
             echo "  Неверный выбор"
-            sleep 1
+            sleep 0.1
             ;;
     esac
 done
