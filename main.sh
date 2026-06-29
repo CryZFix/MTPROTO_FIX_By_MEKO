@@ -654,7 +654,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.89${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.811${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
@@ -679,7 +679,7 @@ show_header() {
     elif [ "$synfix_status" = "has_chain_only" ]; then
         echo -e "  ${BOLD}SYN FIX:${NC} ${YELLOW}Цепочка есть, сервис не запущен${NC}"
     else
-        echo -e "  ${BOLD}SYN FIX:${NC} ${RED}Не установлен${NC}"
+        echo -e "  ${BOLD}SYN FIX:${NC} ${RED}${BOLD}Не установлен${NC}"
     fi
 
     # Проверяем установку Telemt и MTProtoZig
@@ -721,7 +721,7 @@ show_header() {
                 port_display=" (порт $port)"
                 save_port "$port"
             else
-                port_display=" (порт не определён)"
+                port_display="${NC}${BOLD} (порт не определён)"
             fi
         else
             port_display=" (порт не определён)"
@@ -818,18 +818,18 @@ main_menu() {
 
         local synfix_status=$(get_synfix_status)
         if [ "$synfix_status" = "inactive" ]; then
-            local item1="${GREEN}Установить SYN FIX${NC}"
+            local item1="${GREEN}${BOLD}Установить SYN FIX${NC}"
         elif [ "$synfix_status" = "has_chain_only" ]; then
             local item1="${CYAN}Перезапустить сервис${NC}"
         else
-            local item1="${RED}Удалить SYN FIX${NC}"
+            local item1="${RED}${BOLD}Удалить SYN FIX${NC}"
         fi
 
         # Проверяем статус для пункта 2
         if are_bad_options_enabled; then
-            local item2="${CYAN}Отключить MSS и synlimit${NC}"
+            local item2="${CYAN}Отключить встроенные MSS и synlimit${NC}"
         else
-            local item2="${GRAY}Отключить MSS и synlimit (уже отключены)${NC}"
+            local item2="${GRAY}Отключить встроенные MSS и synlimit (уже отключены)${NC}"
         fi
 
         echo -e "  ${CYAN}[1]${NC}  $item1"
@@ -837,7 +837,7 @@ main_menu() {
         echo -e "  ${CYAN}[3]${NC}  ${GREEN}${BOLD}Выполнить базовую оптимизацию${NC}"
         echo -e "  ${CYAN}[4]${NC}  ${RED}${BOLD}Полное удаление MEKOpr${NC}"
         echo -e "  ${CYAN}[5]${NC}  ${NC}${BOLD}Проверить наличие обновлений и обновить скрипт${NC}"
-        echo -e "  ${CYAN}[6]${NC}  ${NC}${BOLD}Меню работы с прокси/конфигами${NC}"
+        echo -e "  ${CYAN}[6]${NC}  ${NC}${BOLD}Меню прокси и конфигов - установка, обновление, настройка, удаление${NC}"
         
         if [ "$show_iptables_rules" = true ]; then
             echo -e "  ${RED}[7]${NC}  Удалить правила iptables-persistent"
