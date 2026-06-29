@@ -39,10 +39,10 @@ if [ -f "$CONFIG_PATH_FILE" ] && [ -s "$CONFIG_PATH_FILE" ]; then
     fi
 else
     echo ""
-    echo -e "  ${BOLD}Укажите путь к конфигу Telemt${NC}"
-    echo -e "  ${DIM}По умолчанию: [/etc/telemt/telemt.toml]${NC}"
-    echo -e "  ${DIM}Если не меняли путь — нажмите Enter${NC}"
-    echo -e "  ${DIM}Если Telemt ещё не установлен — нажмите [N/n]${NC}"
+    echo -e "  ${NC}${BOLD}Укажите путь к конфигу Telemt${NC}"
+    echo -e "  ${NC}${BOLD}По умолчанию: ${GREEN}${BOLD}[/etc/telemt/telemt.toml]${NC}"
+    echo -e "  ${GREEN}${BOLD}Если не меняли путь — нажмите Enter${NC}"
+    echo -e "  ${GREEN}${BOLD}Если Telemt ещё не установлен — нажмите [N/n]${NC}"
     echo ""
     echo -en "  ${BOLD}Ввод:${NC} "
     read -r CONFIG_TELEMT_INPUT
@@ -654,7 +654,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.86${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.87${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
