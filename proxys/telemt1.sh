@@ -28,6 +28,20 @@ get_config_path() {
     return 0
 }
 
+# ── Функция проверки, установлен ли Telemt ──────────────────
+is_telemt_installed() {
+    if command -v telemt >/dev/null 2>&1; then
+        return 0
+    fi
+    if systemctl is-active --quiet telemt 2>/dev/null; then
+        return 0
+    fi
+    if pgrep -x telemt >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
 # ── Функция обновления пути к конфигу ──────────────────────
 update_config_path() {
     echo ""
@@ -174,20 +188,24 @@ restart_telemt() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}Telemt меню v0.1${NC}"
+    echo -e "  ${BOLD}Telemt меню v0.2${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
-    echo -e "  ${CYAN}[1]${BOLD}  Установить Telemt 3.4.18"
-    echo -e "  ${CYAN}[2]${BOLD}  Открыть конфиг Telemt"
-    echo -e "  ${CYAN}[3]${BOLD}  Перезапустить Telemt"
-    echo -e "  ${CYAN}[4]${BOLD}  Обновить путь к конфигу Telemt"
-    echo -e "  ${RED}[5]${RED}  Удалить Telemt"
-    echo -e "  ${CYAN}[0]${BOLD}  Назад в прокси меню"
+    echo -e "  ${CYAN}[1]${NC}  ${BOLD}Установить Telemt 3.4.18"
+    echo -e "  ${CYAN}[2]${NC}  ${BOLD}Открыть конфиг Telemt"
+    echo -e "  ${CYAN}[3]${NC}  ${BOLD}Перезапустить Telemt"
+    echo -e "  ${CYAN}[4]${NC}  ${BOLD}Обновить путь к конфигу Telemt"
+    echo -e "  ${RED}[5]${NC}  ${BOLD}Удалить Telemt"
+    echo -e "  ${CYAN}[0]${NC}  ${BOLD}Назад в прокси меню"
     echo ""
     
-    # Показываем текущий путь к конфигу
-    current_path=$(get_config_path)
-    echo -e "  ${DIM}Текущий путь к конфигу: ${current_path}${NC}"
+    # Проверяем, установлен ли Telemt, и показываем соответствующий статус
+    if is_telemt_installed; then
+        current_path=$(get_config_path)
+        echo -e "  ${DIM}Текущий путь к конфигу: ${current_path}${NC}"
+    else
+        echo -e "  ${YELLOW}Telemt не установлен${NC}"
+    fi
     echo ""
     
     echo -en "  ${BOLD}Выбор:${NC} "
