@@ -204,12 +204,22 @@ edit_config() {
     
     echo ""
     echo -e "  ${BLUE}[i]${NC} Открытие конфига: $config_path"
-    echo -e "  ${GRAY}После редактирования сохраните файл (Ctrl+O) и закройте (Ctrl+X)${NC}"
-    echo ""
-    echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
-    read -rsn1
     
-    nano "$config_path"
+    # Проверяем, доступен ли nano
+    if command -v nano >/dev/null 2>&1; then
+        echo -e "  ${GRAY}После редактирования сохраните файл (Ctrl+O) и закройте (Ctrl+X)${NC}"
+        echo ""
+        echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
+        read -rsn1
+        nano "$config_path"
+    else
+        echo -e "  ${YELLOW}[!]${NC} nano не установлен. Использую vi..."
+        echo -e "  ${GRAY}После редактирования сохраните файл (:wq) и закройте (:q)${NC}"
+        echo ""
+        echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
+        read -rsn1
+        vi "$config_path"
+    fi
     
     echo ""
     echo -e "  ${GREEN}[✓]${NC} Редактирование завершено"
