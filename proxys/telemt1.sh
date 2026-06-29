@@ -247,7 +247,7 @@ restart_telemt() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}Telemt меню v0.4${NC}"
+    echo -e "  ${BOLD}Telemt меню v0.41${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
     echo -e "  ${CYAN}[1]${NC}  ${BOLD}Установить Telemt${NC}"
