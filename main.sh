@@ -438,6 +438,9 @@ iptables -t filter -A "$CHAIN" -p tcp --dport "$PORT" --syn \
 iptables -t filter -A "$CHAIN" -p tcp --dport "$PORT" --syn \
     -j REJECT --reject-with tcp-reset
 
+# Если ни одно правило не сработало — возвращаем пакет обратно в INPUT
+iptables -t filter -A "$CHAIN" -j RETURN
+
 APPLY_SCRIPT_EOF
     chmod +x /opt/mtpr-simple/apply-mtpr-synfix.sh
 }
@@ -654,7 +657,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.811${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v0.9${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
