@@ -215,7 +215,7 @@ purge_proxy() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}MTProtoZig меню v0.2${NC}"
+    echo -e "  ${BOLD}MTProtoZig меню v0.21${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
     echo -e "  ${CYAN}[1]${NC}  ${BOLD}Установить Zig CLI${NC}"
@@ -223,7 +223,7 @@ while true; do
     echo -e "  ${CYAN}[3]${NC}  ${BOLD}Открыть конфиг${NC}"
     echo -e "  ${CYAN}[4]${NC}  ${BOLD}Перезапустить прокси${NC}"
     echo -e "  ${CYAN}[5]${NC}  ${BOLD}Смотреть логи${NC}"
-    echo -e "  ${RED}[6]${RED}  ${BOLD}Удалить MTProtoZig${NC}"
+    echo -e "  ${RED}[6]${NC}  ${BOLD}Удалить MTProtoZig${NC}"
     echo -e "  ${CYAN}[0]${NC}  ${BOLD}Назад в прокси меню${NC}"
     echo ""
 
@@ -231,7 +231,7 @@ while true; do
     if is_mtprotozig_installed; then
         echo -e "  ${DIM}Текущий путь к конфигу: /opt/mtproto-proxy/config.toml${NC}"
         # Показываем ссылку для подключения
-        local proxy_link=$(get_proxy_link)
+        proxy_link=$(get_proxy_link)
         if [ -n "$proxy_link" ]; then
             echo -e "  ${DIM}Ссылка для подключения: ${CYAN}${proxy_link}${NC}"
         fi
