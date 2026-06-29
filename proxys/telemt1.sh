@@ -42,6 +42,26 @@ is_telemt_installed() {
     return 1
 }
 
+# ── Функция получения версии Telemt ─────────────────────────
+get_telemt_version() {
+    if command -v telemt >/dev/null 2>&1; then
+        telemt --version 2>/dev/null | head -1 | awk '{print $2}'
+    else
+        echo ""
+    fi
+}
+
+# ── Функция получения порта(ов) из конфига ──────────────────
+get_telemt_ports() {
+    local config_path=$(get_config_path)
+    if [ ! -f "$config_path" ]; then
+        echo ""
+        return 1
+    fi
+    # Ищем все строки с port = и вытаскиваем значения
+    grep -E '^port[[:space:]]*=' "$config_path" 2>/dev/null | awk -F'=' '{print $2}' | tr -d ' "'
+}
+
 # ── Функция обновления пути к конфигу ──────────────────────
 update_config_path() {
     echo ""
@@ -81,6 +101,19 @@ update_config_path() {
     echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
     read -rsn1
     return 0
+}
+
+# ── Функция просмотра логов ──────────────────────────────────
+view_logs() {
+    echo ""
+    echo -e "  ${BLUE}[i]${NC} Просмотр логов Telemt (Ctrl+C для выхода)..."
+    echo ""
+    echo -e "  ${GRAY}Нажмите любую клавишу для продолжения...${NC}"
+    read -rsn1
+    journalctl -u telemt -f
+    echo ""
+    echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+    read -rsn1
 }
 
 # ── Функция установки Telemt ────────────────────────────────
@@ -262,25 +295,53 @@ restart_telemt() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}Telemt меню v0.42${NC}"
+    echo -e "  ${BOLD}Telemt меню v0.43${NC}"
     echo -e "  ${DIM}===========================${NC}"
-    echo ""
-    echo -e "  ${CYAN}[1]${NC}  ${BOLD}Установить Telemt${NC}"
+    
+    # Показываем информацию о Telemt, если установлен
+    if is_telemt_installed; then
+        echo ""
+        echo -e "  ${NC}${BOLD}Telemt:${NC}${GREEN} установлен${NC}"
+        
+        # Версия
+        version=$(get_telemt_version)
+        if [ -n "$version" ]; then
+            echo -e "  ${NC}${BOLD}Версия:${NC} ${GREEN}${version}${NC}"
+        fi
+        
+        # Порт(ы)
+        ports=$(get_telemt_ports)
+        if [ -n "$ports" ]; then
+            # Проверяем, один порт или несколько
+            port_count=$(echo "$ports" | wc -l)
+            if [ "$port_count" -eq 1 ]; then
+                echo -e "  ${BOLD}Порт:${NC} ${CYAN}${ports}${NC}"
+            else
+                echo -e "  ${BOLD}Порты:${NC} ${CYAN}${ports//$'\n'/, }${NC}"
+            fi
+        fi
+        echo ""
+    fi
+    
+    echo -e "  ${CYAN}[1]${NC}  ${BOLD}Установить/обновить/откатить Telemt${NC}"
     echo -e "  ${CYAN}[2]${NC}  ${BOLD}Открыть конфиг Telemt${NC}"
     echo -e "  ${CYAN}[3]${NC}  ${BOLD}Перезапустить Telemt${NC}"
     echo -e "  ${CYAN}[4]${NC}  ${BOLD}Обновить путь к конфигу Telemt${NC}"
-    echo -e "  ${RED}[5]${NC}  ${BOLD}Удалить Telemt${NC}"
+    echo -e "  ${CYAN}[5]${NC}  ${BOLD}Посмотреть логи Telemt${NC}"
+    echo -e "  ${RED}[6]${NC}  ${BOLD}Удалить Telemt${NC}"
     echo -e "  ${CYAN}[0]${NC}  ${BOLD}Назад в прокси меню${NC}"
     echo ""
     
-    # Проверяем, установлен ли Telemt, и показываем соответствующий статус
-    if is_telemt_installed; then
+    # Если Telemt не установлен, показываем это
+    if ! is_telemt_installed; then
+        echo -e "  ${YELLOW}Telemt не установлен${NC}"
+        echo ""
+    else
+        # Показываем текущий путь к конфигу
         current_path=$(get_config_path)
         echo -e "  ${DIM}Текущий путь к конфигу: ${current_path}${NC}"
-    else
-        echo -e "  ${YELLOW}Telemt не установлен${NC}"
+        echo ""
     fi
-    echo ""
     
     echo -en "  ${BOLD}Выбор:${NC} "
     read -r choice
@@ -299,6 +360,9 @@ while true; do
             update_config_path
             ;;
         5)
+            view_logs
+            ;;
+        6)
             purge_telemt
             ;;
         0)
