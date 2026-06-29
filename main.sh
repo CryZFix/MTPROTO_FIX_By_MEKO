@@ -41,8 +41,8 @@ else
     echo ""
     echo -e "  ${NC}${BOLD}Укажите путь к конфигу Telemt${NC}"
     echo -e "  ${NC}${BOLD}По умолчанию: ${GREEN}${BOLD}[/etc/telemt/telemt.toml]${NC}"
-    echo -e "  ${GREEN}${BOLD}Если не меняли путь — нажмите Enter${NC}"
-    echo -e "  ${GREEN}${BOLD}Если Telemt ещё не установлен — нажмите [N/n]${NC}"
+    echo -e "  ${NC}${BOLD}Если не меняли путь — нажмите ${GREEN}${BOLD}Enter${NC}"
+    echo -e "  ${NC}${BOLD}Если Telemt ещё не установлен — нажмите${GREEN}${BOLD} [N/n]${NC}"
     echo ""
     echo -en "  ${BOLD}Ввод:${NC} "
     read -r CONFIG_TELEMT_INPUT
