@@ -99,8 +99,11 @@ detect_telemt_advanced() {
         DETECTED_PUBLIC_HOST=$(grep -E '^public_host[[:space:]]*=' "$DETECTED_CONFIG_PATH" 2>/dev/null | head -1 | awk -F'=' '{print $2}' | tr -d ' "')
         DETECTED_TLS_DOMAIN=$(grep -E '^tls_domain[[:space:]]*=' "$DETECTED_CONFIG_PATH" 2>/dev/null | head -1 | awk -F'=' '{print $2}' | tr -d ' "')
         
-        # Ищем секрет ТОЛЬКО в секции [access.users]
-        DETECTED_SECRET=$(awk '/^\[access\.users\]/,/^\[/' "$DETECTED_CONFIG_PATH" 2>/dev/null | grep -E '^[[:space:]]*[^#]*[[:space:]]*=' | head -1 | awk -F'=' '{print $2}' | tr -d ' "')
+        # Ищем секрет - сначала в секции [access.users], потом во всем файле
+        DETECTED_SECRET=$(sed -n '/^\[access\.users\]/,/^\[/p' "$DETECTED_CONFIG_PATH" 2>/dev/null | grep -E '=' | head -1 | awk -F'=' '{print $2}' | tr -d ' "')
+        if [ -z "$DETECTED_SECRET" ]; then
+            DETECTED_SECRET=$(grep -E '^[[:space:]]*[^#]*[[:space:]]*=' "$DETECTED_CONFIG_PATH" 2>/dev/null | grep -v '^#' | head -1 | awk -F'=' '{print $2}' | tr -d ' "')
+        fi
         
         # Проверяем режимы
         DETECTED_CLASSIC=$(grep -E '^classic[[:space:]]*=' "$DETECTED_CONFIG_PATH" 2>/dev/null | grep -v '^#' | head -1 | awk -F'=' '{print $2}' | tr -d ' "')
@@ -499,7 +502,7 @@ restart_telemt() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}Telemt меню v0.52${NC}"
+    echo -e "  ${BOLD}Telemt меню v0.53${NC}"
     echo -e "  ${DIM}===========================${NC}"
     
     # Показываем информацию о Telemt, если установлен
