@@ -135,9 +135,9 @@ else
     
     if [ -n "$TELEMT_VERSION" ]; then
         # Telemt найден — ищем конфиг
-        local _detected_info=$(detect_telemt_advanced)
-        local _detected_path="${_detected_info%:*}"
-        local _detected_port="${_detected_info#*:}"
+        _detected_info=$(detect_telemt_advanced)
+        _detected_path="${_detected_info%:*}"
+        _detected_port="${_detected_info#*:}"
         
         if [ -n "$_detected_path" ] && [ -f "$_detected_path" ]; then
             echo -e "  ${NC}${BOLD}Телемт найден по пути: ${GREEN}${BOLD}${_detected_path}${NC}"
@@ -162,8 +162,8 @@ else
     else
         if [ -z "$CONFIG_TELEMT_INPUT" ]; then
             # Если Enter — пробуем определить автоматически
-            local _detected_info=$(detect_telemt_advanced)
-            local _detected_path="${_detected_info%:*}"
+            _detected_info=$(detect_telemt_advanced)
+            _detected_path="${_detected_info%:*}"
             
             if [ -n "$_detected_path" ] && [ -f "$_detected_path" ]; then
                 CONFIG_TELEMT_INPUT="$_detected_path"
@@ -174,15 +174,6 @@ else
                     mkdir -p /opt/mtpr-simple
                     echo "skip" > "$CONFIG_PATH_FILE"
                     CONFIG_TELEMT=""
-                    # Переходим к основной части скрипта, пропуская дальнейшую обработку
-                    # Используем return, чтобы выйти из текущего блока
-                    # Но так как мы внутри if, нужно использовать return только если мы в функции
-                    # В данном случае мы в основном теле скрипта, используем continue-like подход
-                    # Просто ставим CONFIG_TELEMT_INPUT в пустоту и дальше не идём
-                    # Но нам нужно выйти из этого блока, используем return 0
-                    # Однако return в основном теле скрипта работает как exit, поэтому используем другой подход
-                    # Мы просто устанавливаем CONFIG_TELEMT_INPUT в пустоту и пропускаем сохранение
-                    CONFIG_TELEMT_INPUT=""
                 else
                     CONFIG_TELEMT_INPUT="/etc/telemt/telemt.toml"
                 fi
@@ -861,7 +852,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.16${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.17${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
