@@ -226,17 +226,17 @@ generate_proxy_links() {
     # Classic режим
     if [ "$classic_enabled" = true ]; then
         local classic_secret=$(generate_secret "$detected_secret" "" "classic")
-        links="${links}Classic:\n"
-        links="${links}tg://proxy?server=${server}&port=${port}&secret=${classic_secret}\n"
+        links="  ${links}Classic:\n"
+        links="  ${links}tg://proxy?server=${server}&port=${port}&secret=${classic_secret}\n"
     fi
     
     # Secure режим (ee в начале)
     if [ "$secure_enabled" = true ]; then
         local secure_secret=$(generate_secret "$detected_secret" "" "secure")
         if [ -z "$links" ]; then
-            links="${links}Secure:\n"
+            links="  ${links}Secure:\n"
         else
-            links="${links}Secure:\n"
+            links="  ${links}Secure:\n"
         fi
         links="${links}tg://proxy?server=${server}&port=${port}&secret=${secure_secret}\n"
     fi
@@ -245,9 +245,9 @@ generate_proxy_links() {
     if [ "$tls_enabled" = true ]; then
         local tls_secret=$(generate_secret "$detected_secret" "$detected_tls_domain" "tls")
         if [ -z "$links" ]; then
-            links="${links}TLS:\n"
+            links="  ${links}TLS:\n"
         else
-            links="${links}TLS:\n"
+            links="  ${links}TLS:\n"
         fi
         links="${links}tg://proxy?server=${server}&port=${port}&secret=${tls_secret}\n"
     fi
@@ -538,7 +538,7 @@ restart_telemt() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}Telemt меню v0.48${NC}"
+    echo -e "  ${BOLD}Telemt меню v0.49${NC}"
     echo -e "  ${DIM}===========================${NC}"
     
     # Показываем информацию о Telemt, если установлен
@@ -568,7 +568,7 @@ while true; do
         if [ -n "$links" ]; then
             echo ""
             echo -e "  ${BOLD}Ссылки для подключения:${NC}"
-            echo -e "$links"
+            echo -e "  $links"
         fi
         
         # Онлайн
