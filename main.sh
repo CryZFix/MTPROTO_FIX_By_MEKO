@@ -958,7 +958,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.25${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.27${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
@@ -1033,47 +1033,39 @@ show_header() {
         mtprotozig_installed=true
     fi
 
+    # ── ФОРМИРУЕМ СТРОКУ СТАТУСА ─────────────────────────────
     local status_line=""
+    
     if [ "$telemt_installed" = true ] && [ "$mtprotozig_installed" = true ]; then
-        status_line="Telemt: ${GREEN}установлен${NC}${BOLD} | Mtproto.zig: ${GREEN}установлен${NC}"
+        # Оба установлены
+        local telemt_version=$(get_telemt_version)
+        local port_display=""
+        if [ -n "$current_port" ] && [[ "$current_port" =~ ^[0-9]+$ ]]; then
+            port_display=" Port: ${current_port}"
+        fi
+        status_line="Telemt V: ${GREEN}${telemt_version}${NC}${port_display}  |  Mtproto.zig: ${GREEN}установлен${NC}"
     elif [ "$telemt_installed" = true ]; then
-        status_line="Telemt: ${GREEN}установлен${NC}${BOLD} | Mtproto.zig: ${GRAY}не обнаружен${NC}"
+        # Только Telemt
+        local telemt_version=$(get_telemt_version)
+        local port_display=""
+        if [ -n "$current_port" ] && [[ "$current_port" =~ ^[0-9]+$ ]]; then
+            port_display=" Port: ${current_port}"
+        fi
+        status_line="Telemt V: ${GREEN}${telemt_version}${NC}${port_display}"
     elif [ "$mtprotozig_installed" = true ]; then
-        status_line="Telemt: ${GRAY}не обнаружен${NC}${BOLD} | Mtproto.zig: ${GREEN}установлен${NC}"
+        # Только MTProtoZig
+        status_line="Mtproto.zig: ${GREEN}установлен${NC}"
     else
-        status_line="Telemt: ${RED}не обнаружен${NC}${BOLD} | Mtproto.zig: ${RED}не обнаружен${NC}"
+        # Ничего не установлено
+        status_line="${RED}Прокси не установлены${NC}"
     fi
+    
     echo -e "  ${BOLD}${status_line}${NC}"
 
+    # ── ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ДЛЯ TELEMT ────────────────
     if [ "$telemt_installed" = true ]; then
-        local port_display=""
-        
-        if [ -n "$current_port" ] && [[ "$current_port" =~ ^[0-9]+$ ]]; then
-            port_display=" (порт $current_port)"
-        else
-            port_display=" (порт не определён)"
-        fi
-
-        local telemt_version=$(get_telemt_version)
-        local version_color=""
-        if [ -n "$telemt_version" ]; then
-            if [ "$telemt_version" = "3.4.18" ]; then
-                version_color="${GREEN}"
-            elif [[ "$(printf '%s\n' "3.4.18" "$telemt_version" | sort -V | head -n1)" != "3.4.18" ]]; then
-                version_color="${RED}"
-            else
-                version_color="${YELLOW}"
-            fi
-            version_display="${version_color}${telemt_version}${NC}"
-        else
-            version_display="${RED}не определена${NC}"
-        fi
-
         local online_count=$(get_telemt_online)
-
-        echo -e "  ${BOLD}Telemt:${NC} ${GREEN}Установлен${NC}${port_display}"
-        echo -e "  ${BOLD}Версия Telemt:${NC} $version_display"
-        echo -e "  ${BOLD}Подключено к прокси Telemt:${NC} ${CYAN}$online_count${NC} человек"
+        echo -e "  ${BOLD}Подключено к прокси Telemt:${NC} ${CYAN}$online_count${NC}${BOLD} человек"
 
         local mss_status=""
         local mss_bulk_status=""
@@ -1100,6 +1092,7 @@ show_header() {
         echo -e "  ${BOLD}Встроенный MSS:${NC} $mss_status  |  ${BOLD}MSS_BULK:${NC} $mss_bulk_status  |  ${BOLD}Synlimit:${NC} $synlimit_status"
     fi
 
+    # ── ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ДЛЯ MTPROTOZIG ────────────
     if [ "$mtprotozig_installed" = true ]; then
         local online_count=$(get_mtprotozig_online)
         if [ -n "$online_count" ] && [ "$online_count" -ge 0 ] 2>/dev/null; then
@@ -1112,15 +1105,39 @@ show_header() {
     echo ""
 }
 
-open_proxy_menu() {
-    local PROXY_MENU_SCRIPT="/opt/mtpr-simple/proxys/proxymenu.sh"
-    if [ -f "$PROXY_MENU_SCRIPT" ]; then
-        exec "$PROXY_MENU_SCRIPT"
-    else
-        log_error "Файл $PROXY_MENU_SCRIPT не найден"
-        echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
-        read -rsn1
+
+# ── Функция проверки статуса базовой оптимизации ──────────
+is_optimization_applied() {
+    local applied=0
+    local check_count=0
+    
+    # Проверяем sysctl параметры (3 ключевых)
+    if [ -f /etc/sysctl.d/99-custom.conf ]; then
+        # Проверяем tcp_keepalive_time
+        local current_time=$(sysctl -n net.ipv4.tcp_keepalive_time 2>/dev/null)
+        if [ "$current_time" = "45" ]; then
+            check_count=$((check_count + 1))
+        fi
+        
+        # Проверяем tcp_keepalive_intvl
+        local current_intvl=$(sysctl -n net.ipv4.tcp_keepalive_intvl 2>/dev/null)
+        if [ "$current_intvl" = "15" ]; then
+            check_count=$((check_count + 1))
+        fi
+        
+        # Проверяем tcp_keepalive_probes
+        local current_probes=$(sysctl -n net.ipv4.tcp_keepalive_probes 2>/dev/null)
+        if [ "$current_probes" = "3" ]; then
+            check_count=$((check_count + 1))
+        fi
     fi
+    
+    # Если хотя бы 2 из 3 параметров совпадают — считаем оптимизацию применённой
+    if [ "$check_count" -ge 2 ]; then
+        applied=1
+    fi
+    
+    return $applied
 }
 
 # ── Функция проверки ограничений сервера ──────────────────
@@ -1172,8 +1189,14 @@ main_menu() {
             local item2="${NC}${BOLD}Включить mss и mss_bulk в конфиге telemt${RED} (не рекомендуется)"
         fi
 
+        if is_optimization_applied; then
+            local item3_text="${GRAY}${BOLD}Выполнить базовую оптимизацию (уже применена)${NC}"
+        else
+            local item3_text="${GREEN}${BOLD}Выполнить базовую оптимизацию${NC}"
+        fi
+
         echo -e "  ${CYAN}[1]${NC}  $item1"
-        echo -e "  ${CYAN}[2]${NC}  ${GREEN}${BOLD}Выполнить базовую оптимизацию${NC}"
+        echo -e "  ${CYAN}[2]${NC}  $item3_text"
         echo -e "  ${CYAN}[3]${NC}  ${NC}${BOLD}Меню прокси и конфигов - установка, обновление, настройка, удаление${NC}"
         echo -e "  ${CYAN}[4]${NC}  ${NC}${BOLD}Проверить наличие обновлений и обновить скрипт${NC}"
         echo -e "  ${CYAN}[5]${NC}  $item2"
