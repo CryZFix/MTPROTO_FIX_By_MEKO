@@ -1057,7 +1057,7 @@ show_header() {
         status_line="Mtproto.zig: ${GREEN}установлен${NC}"
     else
         # Ничего не установлено
-        status_line="${RED}Прокси не установлены${NC}"
+        status_line="${RED}${NC}Прокси:${RED}${BOLD} не установлены${NC}"
     fi
     
     echo -e "  ${BOLD}${status_line}${NC}"
@@ -1188,7 +1188,7 @@ main_menu() {
 
         local synfix_status=$(get_synfix_status)
         if [ "$synfix_status" = "inactive" ]; then
-            local item1="${GREEN}${BOLD}Установить SYN FIX${NC}"
+            local item1="${GREEN}${BOLD}Установить SYN + u32 FIX${NC}"
         elif [ "$synfix_status" = "has_chain_only" ]; then
             local item1="${CYAN}Перезапустить сервис${NC}"
         else
