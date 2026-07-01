@@ -223,49 +223,31 @@ generate_proxy_links() {
     
     local links=""
     
-    # Classic режим
-    if [ "$classic_enabled" = true ]; then
-        local classic_secret=$(generate_secret "$detected_secret" "" "classic")
-        links="  ${links}Classic:\n"
-        links="  ${links}tg://proxy?server=${server}&port=${port}&secret=${classic_secret}\n"
-    fi
-    
-    # Secure режим (ee в начале)
-    if [ "$secure_enabled" = true ]; then
-        local secure_secret=$(generate_secret "$detected_secret" "" "secure")
-        if [ -z "$links" ]; then
-            links="  ${links}Secure:\n"
-        else
-            links="  ${links}Secure:\n"
-        fi
-        links="${links}tg://proxy?server=${server}&port=${port}&secret=${secure_secret}\n"
-    fi
-    
     # TLS режим (ee + secret + hex(tls_domain))
     if [ "$tls_enabled" = true ]; then
-        local tls_secret=$(generate_secret "$detected_secret" "$detected_tls_domain" "tls")
-        if [ -z "$links" ]; then
-            links="  ${links}TLS:\n"
-        else
-            links="  ${links}TLS:\n"
+        local hex_domain=""
+        if [ -n "$detected_tls_domain" ]; then
+            hex_domain=$(echo -n "$detected_tls_domain" | xxd -p -c 256 2>/dev/null)
         fi
-        links="${links}tg://proxy?server=${server}&port=${port}&secret=${tls_secret}\n"
+        local tls_secret="ee${detected_secret}${hex_domain}"
+        links="${links}  TLS:\n"
+        links="${links}  tg://proxy?server=${server}&port=${port}&secret=${tls_secret}\n"
+    fi
+    
+    # Secure режим (dd + secret)
+    if [ "$secure_enabled" = true ]; then
+        local secure_secret="dd${detected_secret}"
+        links="${links}  Secure (DD):\n"
+        links="${links}  tg://proxy?server=${server}&port=${port}&secret=${secure_secret}\n"
+    fi
+    
+    # Classic режим (просто secret)
+    if [ "$classic_enabled" = true ]; then
+        links="${links}  Classic:\n"
+        links="${links}  tg://proxy?server=${server}&port=${port}&secret=${detected_secret}\n"
     fi
     
     echo -e "$links"
-}
-
-# ── Функция получения текущего пути к конфигу ──────────────
-get_config_path() {
-    if [ -f "$CONFIG_PATH_FILE" ] && [ -s "$CONFIG_PATH_FILE" ]; then
-        path=$(cat "$CONFIG_PATH_FILE")
-        if [ "$path" != "skip" ]; then
-            echo "$path"
-            return 0
-        fi
-    fi
-    echo "/etc/telemt/telemt.toml"
-    return 0
 }
 
 # ── Функция проверки, установлен ли Telemt ──────────────────
@@ -538,7 +520,7 @@ restart_telemt() {
 while true; do
     clear
     echo ""
-    echo -e "  ${BOLD}Telemt меню v0.49${NC}"
+    echo -e "  ${BOLD}Telemt меню v0.5${NC}"
     echo -e "  ${DIM}===========================${NC}"
     
     # Показываем информацию о Telemt, если установлен
