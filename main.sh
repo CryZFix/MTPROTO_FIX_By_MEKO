@@ -257,10 +257,10 @@ install_syn_fix() {
         # ── ВЫБОР ТИПА ФИКСА ──────────────────────────────────
         echo ""
         echo -e "  ${BOLD}Выберите тип SYN FIX:${NC}"
-        echo -e "  ${GREEN}[1]${NC}  ${BOLD}Новый вариант${NC} (u32 + ACCEPT без лимита) — ${GREEN}рекомендуется${NC}"
-        echo -e "  ${CYAN}[2]${NC}  ${BOLD}Старый вариант${NC} (TTL+Length + ACCEPT без лимита)"
+        echo -e "  ${GREEN}[1]${NC}  ${BOLD}Новый вариант${NC} (${BOLD}v3.0О${NC} пределение ios с помощью u32) — ${GREEN}рекомендуется${NC}"
+        echo -e "  ${CYAN}[2]${NC}  ${BOLD}Старый вариант${NC} (${BOLD}v2.0${NC} Определение is и других устройств по TTL+Length)"
         echo ""
-        echo -en "  ${BOLD}Выбор [1/2, Enter = 1]:${NC} "
+        echo -en "  ${NC}${BOLD}Ввод (Новый - ${GREEN}${BOLD}1 или enter${NC}${BOLD}, старый - ${RED}${BOLD}2${NC}${BOLD}):${NC} "
         read -r fix_choice
 
         if [ -z "$fix_choice" ] || [ "$fix_choice" = "1" ]; then
@@ -729,7 +729,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.06${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.08${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
