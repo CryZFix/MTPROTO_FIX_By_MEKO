@@ -31,6 +31,94 @@ check_root
 # ── Файл для сохранения пути к конфигу ──────────────────────
 CONFIG_PATH_FILE="/opt/mtpr-simple/config_path"
 
+# ── Функции для работы с TOML (из реаниматора) ──────────────
+_toml_get_value() {
+    local _key="$1" _file="$2"
+    [ -f "$_file" ] || return 0
+    awk -v k="$_key" '
+        /^[[:space:]]*#/ { next }
+        $1 == k && $2 == "=" { gsub(/[^0-9]/, "", $3); print $3; exit }
+    ' "$_file" 2>/dev/null
+}
+
+_toml_has_section() {
+    local _section="$1" _file="$2"
+    grep -qE "^\\[${_section}\\]" "$_file" 2>/dev/null
+}
+
+_toml_has_key() {
+    local _key="$1" _file="$2"
+    grep -qE "^${_key}[[:space:]]*=" "$_file" 2>/dev/null
+}
+
+_is_excluded_path() {
+    local _path="$1"
+    case "$_path" in
+        *telemt-panel*|*telemt_panel*) return 0 ;;
+    esac
+    return 1
+}
+
+_looks_like_telemt_config() {
+    local _file="$1"
+    [ -f "$_file" ] || return 1
+    grep -qE '^\[access\.users\]|^\[censorship\]|^\[general\.modes\]|^tls_domain[[:space:]]*=' "$_file" 2>/dev/null
+}
+
+# ── Функция проверки установки Telemt (сначала версия) ──────
+is_telemt_installed() {
+    command -v telemt >/dev/null 2>&1
+}
+
+get_telemt_version() {
+    if command -v telemt >/dev/null 2>&1; then
+        telemt --version 2>/dev/null | head -1 | awk '{print $2}'
+    else
+        echo ""
+    fi
+}
+
+# ── Расширенное обнаружение Telemt (из реаниматора) ──────────
+detect_telemt_advanced() {
+    local DETECTED_CONFIG_PATH=""
+    local DETECTED_PORT=""
+    
+    # 1. Локальный процесс telemt
+    if pgrep -x telemt &>/dev/null || systemctl is-active telemt.service &>/dev/null 2>&1; then
+        local _args
+        _args=$(ps -eo args 2>/dev/null | grep '[t]elemt' | grep -v 'telemt-panel' | grep -v 'telemt_panel' | head -1 | grep -oE '/[^ ]+\.toml' | head -1)
+        if [ -n "$_args" ] && [ -f "$_args" ] && ! _is_excluded_path "$_args" && _looks_like_telemt_config "$_args"; then
+            DETECTED_CONFIG_PATH="$_args"
+        fi
+    fi
+    
+    # 2. Поиск конфига в стандартных местах
+    if [ -z "$DETECTED_CONFIG_PATH" ]; then
+        local _cf
+        for _cf in /etc/telemt/telemt.toml /etc/telemt/config.toml /etc/telemt.toml /opt/telemt/config.toml /opt/telemt/telemt.toml; do
+            if [ -f "$_cf" ] && ! _is_excluded_path "$_cf" && _looks_like_telemt_config "$_cf"; then
+                DETECTED_CONFIG_PATH="$_cf"
+                break
+            fi
+        done
+    fi
+    
+    # 3. Проверяем сохранённый путь
+    if [ -z "$DETECTED_CONFIG_PATH" ] && [ -f "$CONFIG_PATH_FILE" ] && [ -s "$CONFIG_PATH_FILE" ]; then
+        local _saved_path=$(cat "$CONFIG_PATH_FILE")
+        if [ "$_saved_path" != "skip" ] && [ -f "$_saved_path" ] && _looks_like_telemt_config "$_saved_path"; then
+            DETECTED_CONFIG_PATH="$_saved_path"
+        fi
+    fi
+    
+    # 4. Получаем порт из конфига
+    if [ -n "$DETECTED_CONFIG_PATH" ] && [ -f "$DETECTED_CONFIG_PATH" ]; then
+        DETECTED_PORT=$(_toml_get_value "port" "$DETECTED_CONFIG_PATH")
+    fi
+    
+    echo "$DETECTED_CONFIG_PATH:$DETECTED_PORT"
+}
+
 # ── Проверяем, сохранён ли путь к конфигу ──────────────────
 if [ -f "$CONFIG_PATH_FILE" ] && [ -s "$CONFIG_PATH_FILE" ]; then
     CONFIG_TELEMT=$(cat "$CONFIG_PATH_FILE")
@@ -38,11 +126,31 @@ if [ -f "$CONFIG_PATH_FILE" ] && [ -s "$CONFIG_PATH_FILE" ]; then
         CONFIG_TELEMT=""
     fi
 else
+    # Определяем, установлен ли Telemt
+    TELEMT_VERSION=$(get_telemt_version)
+    
     echo ""
     echo -e "  ${NC}${BOLD}Укажите путь к конфигу Telemt${NC}"
     echo -e "  ${NC}${BOLD}По умолчанию: ${GREEN}${BOLD}[/etc/telemt/telemt.toml]${NC}"
-    echo -e "  ${NC}${BOLD}Если не меняли путь — нажмите ${GREEN}${BOLD}Enter${NC}"
-    echo -e "  ${NC}${BOLD}Если Telemt ещё не установлен — нажмите${GREEN}${BOLD} [N/n]${NC}"
+    
+    if [ -n "$TELEMT_VERSION" ]; then
+        # Telemt найден — ищем конфиг
+        local _detected_info=$(detect_telemt_advanced)
+        local _detected_path="${_detected_info%:*}"
+        local _detected_port="${_detected_info#*:}"
+        
+        if [ -n "$_detected_path" ] && [ -f "$_detected_path" ]; then
+            echo -e "  ${NC}${BOLD}Телемт найден по пути: ${GREEN}${BOLD}${_detected_path}${NC}"
+            echo -e "  ${NC}${BOLD}Если путь определён верно — нажмите ${GREEN}${BOLD}Enter${NC}"
+        else
+            echo -e "  ${NC}${BOLD}Телемт найден (версия ${TELEMT_VERSION}), но конфиг не обнаружен.${NC}"
+            echo -e "  ${NC}${BOLD}Если путь определён верно — нажмите ${GREEN}${BOLD}Enter${NC}"
+        fi
+    else
+        echo -e "  ${NC}${BOLD}Телемт не найден.${NC}"
+        echo -e "  ${NC}${BOLD}Если Telemt не установлен - нажмите ${GREEN}${BOLD}Enter${NC}"
+    fi
+    
     echo ""
     echo -en "  ${BOLD}Ввод:${NC} "
     read -r CONFIG_TELEMT_INPUT
@@ -53,23 +161,51 @@ else
         CONFIG_TELEMT=""
     else
         if [ -z "$CONFIG_TELEMT_INPUT" ]; then
-            CONFIG_TELEMT_INPUT="/etc/telemt/telemt.toml"
-        fi
-
-        if [ ! -f "$CONFIG_TELEMT_INPUT" ]; then
-            log_warning "Файл $CONFIG_TELEMT_INPUT не найден."
-            echo -en "  ${BOLD}Сохранить этот путь всё равно? [y/N]:${NC} "
-            confirm_path=""
-            read -r confirm_path
-            if [[ ! "$confirm_path" =~ ^[yY]$ ]]; then
-                log_error "Путь к конфигу не подтверждён, выход."
-                exit 1
+            # Если Enter — пробуем определить автоматически
+            local _detected_info=$(detect_telemt_advanced)
+            local _detected_path="${_detected_info%:*}"
+            
+            if [ -n "$_detected_path" ] && [ -f "$_detected_path" ]; then
+                CONFIG_TELEMT_INPUT="$_detected_path"
+            else
+                # Если Telemt не найден и Enter — делаем skip
+                if [ -z "$TELEMT_VERSION" ]; then
+                    log_info "Telemt не найден, пропускаем настройку конфига"
+                    mkdir -p /opt/mtpr-simple
+                    echo "skip" > "$CONFIG_PATH_FILE"
+                    CONFIG_TELEMT=""
+                    # Переходим к основной части скрипта, пропуская дальнейшую обработку
+                    # Используем return, чтобы выйти из текущего блока
+                    # Но так как мы внутри if, нужно использовать return только если мы в функции
+                    # В данном случае мы в основном теле скрипта, используем continue-like подход
+                    # Просто ставим CONFIG_TELEMT_INPUT в пустоту и дальше не идём
+                    # Но нам нужно выйти из этого блока, используем return 0
+                    # Однако return в основном теле скрипта работает как exit, поэтому используем другой подход
+                    # Мы просто устанавливаем CONFIG_TELEMT_INPUT в пустоту и пропускаем сохранение
+                    CONFIG_TELEMT_INPUT=""
+                else
+                    CONFIG_TELEMT_INPUT="/etc/telemt/telemt.toml"
+                fi
             fi
         fi
 
-        mkdir -p /opt/mtpr-simple
-        echo "$CONFIG_TELEMT_INPUT" > "$CONFIG_PATH_FILE"
-        CONFIG_TELEMT="$CONFIG_TELEMT_INPUT"
+        # Если CONFIG_TELEMT_INPUT не пустой, пробуем сохранить
+        if [ -n "$CONFIG_TELEMT_INPUT" ]; then
+            if [ ! -f "$CONFIG_TELEMT_INPUT" ]; then
+                log_warning "Файл $CONFIG_TELEMT_INPUT не найден."
+                echo -en "  ${BOLD}Сохранить этот путь всё равно? [y/N]:${NC} "
+                confirm_path=""
+                read -r confirm_path
+                if [[ ! "$confirm_path" =~ ^[yY]$ ]]; then
+                    log_error "Путь к конфигу не подтверждён, выход."
+                    exit 1
+                fi
+            fi
+
+            mkdir -p /opt/mtpr-simple
+            echo "$CONFIG_TELEMT_INPUT" > "$CONFIG_PATH_FILE"
+            CONFIG_TELEMT="$CONFIG_TELEMT_INPUT"
+        fi
     fi
 fi
 
@@ -121,6 +257,16 @@ get_saved_port() {
 
 save_port() {
     echo "$1" >"$PORT_FILE"
+}
+
+# ── Функция получения порта Telemt ──────────────────────────
+get_telemt_port() {
+    local config_path="$1"
+    if [ -z "$config_path" ] || [ ! -f "$config_path" ]; then
+        echo ""
+        return 1
+    fi
+    _toml_get_value "port" "$config_path"
 }
 
 # ── Название кастомной цепочки iptables ─────────────────────
@@ -715,7 +861,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.13${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.16${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
