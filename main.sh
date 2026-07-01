@@ -1,3 +1,4 @@
+
 #!/bin/bash
 set -eo pipefail
 
@@ -958,7 +959,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.29${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.24${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
@@ -1033,39 +1034,47 @@ show_header() {
         mtprotozig_installed=true
     fi
 
-    # ── ФОРМИРУЕМ СТРОКУ СТАТУСА ─────────────────────────────
     local status_line=""
-    
     if [ "$telemt_installed" = true ] && [ "$mtprotozig_installed" = true ]; then
-        # Оба установлены
-        local telemt_version=$(get_telemt_version)
-        local port_display=""
-        if [ -n "$current_port" ] && [[ "$current_port" =~ ^[0-9]+$ ]]; then
-            port_display=" Port: ${current_port}"
-        fi
-        status_line="Telemt V: ${GREEN}${telemt_version}${NC}${port_display}  |  Mtproto.zig: ${GREEN}установлен${NC}"
+        status_line="Telemt: ${GREEN}установлен${NC}${BOLD} | Mtproto.zig: ${GREEN}установлен${NC}"
     elif [ "$telemt_installed" = true ]; then
-        # Только Telemt
-        local telemt_version=$(get_telemt_version)
-        local port_display=""
-        if [ -n "$current_port" ] && [[ "$current_port" =~ ^[0-9]+$ ]]; then
-            port_display=" Port: ${current_port}"
-        fi
-        status_line="Telemt V: ${GREEN}${telemt_version}${NC}${port_display}"
+        status_line="Telemt: ${GREEN}установлен${NC}${BOLD} | Mtproto.zig: ${GRAY}не обнаружен${NC}"
     elif [ "$mtprotozig_installed" = true ]; then
-        # Только MTProtoZig
-        status_line="Mtproto.zig: ${GREEN}установлен${NC}"
+        status_line="Telemt: ${GRAY}не обнаружен${NC}${BOLD} | Mtproto.zig: ${GREEN}установлен${NC}"
     else
-        # Ничего не установлено
-        status_line="${RED}Прокси не установлены${NC}"
+        status_line="Telemt: ${RED}не обнаружен${NC}${BOLD} | Mtproto.zig: ${RED}не обнаружен${NC}"
     fi
-    
     echo -e "  ${BOLD}${status_line}${NC}"
 
-    # ── ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ДЛЯ TELEMT ────────────────
     if [ "$telemt_installed" = true ]; then
+        local port_display=""
+        
+        if [ -n "$current_port" ] && [[ "$current_port" =~ ^[0-9]+$ ]]; then
+            port_display=" (порт $current_port)"
+        else
+            port_display=" (порт не определён)"
+        fi
+
+        local telemt_version=$(get_telemt_version)
+        local version_color=""
+        if [ -n "$telemt_version" ]; then
+            if [ "$telemt_version" = "3.4.18" ]; then
+                version_color="${GREEN}"
+            elif [[ "$(printf '%s\n' "3.4.18" "$telemt_version" | sort -V | head -n1)" != "3.4.18" ]]; then
+                version_color="${RED}"
+            else
+                version_color="${YELLOW}"
+            fi
+            version_display="${version_color}${telemt_version}${NC}"
+        else
+            version_display="${RED}не определена${NC}"
+        fi
+
         local online_count=$(get_telemt_online)
-        echo -e "  ${BOLD}Подключено к прокси Telemt:${NC} ${CYAN}$online_count${NC}${BOLD} человек"
+
+        echo -e "  ${BOLD}Telemt:${NC} ${GREEN}Установлен${NC}${port_display}"
+        echo -e "  ${BOLD}Версия Telemt:${NC} $version_display"
+        echo -e "  ${BOLD}Подключено к прокси Telemt:${NC} ${CYAN}$online_count${NC} человек"
 
         local mss_status=""
         local mss_bulk_status=""
@@ -1092,7 +1101,6 @@ show_header() {
         echo -e "  ${BOLD}Встроенный MSS:${NC} $mss_status  |  ${BOLD}MSS_BULK:${NC} $mss_bulk_status  |  ${BOLD}Synlimit:${NC} $synlimit_status"
     fi
 
-    # ── ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ДЛЯ MTPROTOZIG ────────────
     if [ "$mtprotozig_installed" = true ]; then
         local online_count=$(get_mtprotozig_online)
         if [ -n "$online_count" ] && [ "$online_count" -ge 0 ] 2>/dev/null; then
@@ -1105,50 +1113,15 @@ show_header() {
     echo ""
 }
 
-
-# ── Функция проверки статуса базовой оптимизации ──────────
-is_optimization_applied() {
-    local applied=0
-    local check_count=0
-    
-    # Проверяем sysctl параметры (3 ключевых)
-    if [ -f /etc/sysctl.d/99-custom.conf ]; then
-        # Проверяем tcp_congestion_control (BBR)
-        local current_congestion=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null)
-        if [ "$current_congestion" = "bbr" ]; then
-            check_count=$((check_count + 1))
-        fi
-        
-        # Проверяем default_qdisc (fq)
-        local current_qdisc=$(sysctl -n net.core.default_qdisc 2>/dev/null)
-        if [ "$current_qdisc" = "fq" ]; then
-            check_count=$((check_count + 1))
-        fi
-        
-        # Проверяем tcp_fastopen
-        local current_fastopen=$(sysctl -n net.ipv4.tcp_fastopen 2>/dev/null)
-        if [ "$current_fastopen" = "3" ]; then
-            check_count=$((check_count + 1))
-        fi
+open_proxy_menu() {
+    local PROXY_MENU_SCRIPT="/opt/mtpr-simple/proxys/proxymenu.sh"
+    if [ -f "$PROXY_MENU_SCRIPT" ]; then
+        exec "$PROXY_MENU_SCRIPT"
+    else
+        log_error "Файл $PROXY_MENU_SCRIPT не найден"
+        echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+        read -rsn1
     fi
-    
-    # Если хотя бы 2 из 3 параметров совпадают — считаем оптимизацию применённой
-    if [ "$check_count" -ge 2 ]; then
-        applied=1
-    fi
-    
-    return $applied
-}
-
-# ── Функция проверки ограничений сервера ──────────────────
-check_censor() {
-    echo ""
-    log_info "Проверка ограничений на сервере..."
-    echo ""
-    wget -qO- censorcheck.tlab.pw | bash
-    echo ""
-    echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
-    read -rsn1
 }
 
 # ── Главное меню ─────────────────────────────────────────────
@@ -1186,25 +1159,18 @@ main_menu() {
         if are_bad_options_enabled; then
             local item2="${NC}${BOLD}Отключить mss, mss_bulk и synlimit в cfg telemt${NC}"
         else
-            local item2="${NC}${BOLD}Включить mss и mss_bulk в конфиге telemt${RED} (не рекомендуется)"
-        fi
-
-        if is_optimization_applied; then
-            local item3_text="${GRAY}${BOLD}Выполнить базовую оптимизацию (уже применена)${NC}"
-        else
-            local item3_text="${GREEN}${BOLD}Выполнить базовую оптимизацию${NC}"
+            local item2="${NC}${BOLD}Включить mss и mss_bulk в конфиге telemt${NC}"
         fi
 
         echo -e "  ${CYAN}[1]${NC}  $item1"
-        echo -e "  ${CYAN}[2]${NC}  $item3_text"
-        echo -e "  ${CYAN}[3]${NC}  ${NC}${BOLD}Меню прокси и конфигов - установка, обновление, настройка, удаление${NC}"
-        echo -e "  ${CYAN}[4]${NC}  ${NC}${BOLD}Проверить наличие обновлений и обновить скрипт${NC}"
-        echo -e "  ${CYAN}[5]${NC}  $item2"
-        echo -e "  ${CYAN}[6]${NC}  ${NC}${BOLD}Проверить ограничения на сервере${NC}"
-        echo -e "  ${CYAN}[7]${NC}  ${RED}${BOLD}Полное удаление MEKOpr${NC}"
+        echo -e "  ${CYAN}[2]${NC}  $item2"
+        echo -e "  ${CYAN}[3]${NC}  ${GREEN}${BOLD}Выполнить базовую оптимизацию${NC}"
+        echo -e "  ${CYAN}[4]${NC}  ${RED}${BOLD}Полное удаление MEKOpr${NC}"
+        echo -e "  ${CYAN}[5]${NC}  ${NC}${BOLD}Проверить наличие обновлений и обновить скрипт${NC}"
+        echo -e "  ${CYAN}[6]${NC}  ${NC}${BOLD}Меню прокси и конфигов - установка, обновление, настройка, удаление${NC}"
         
         if [ "$show_iptables_rules" = true ]; then
-            echo -e "  ${RED}[8]${NC}  Удалить правила iptables-persistent"
+            echo -e "  ${RED}[7]${NC}  Удалить правила iptables-persistent"
         fi
         
         echo -e "  ${CYAN}[0]${NC}  Выход"
@@ -1248,30 +1214,27 @@ main_menu() {
             ;;
         2)
             echo ""
-            apply_basic_optimization
-            echo ""
-            read -rsn1 -p "  Нажмите любую клавишу для возврата в меню..."
-            ;;
-        3)
-            open_proxy_menu
-            ;;
-        4)
-            echo ""
-            update_script
-            ;;
-        5)
-            echo ""
             apply_optimization
             echo ""
             read -rsn1 -p "  Нажмите любую клавишу для возврата в меню..."
             ;;
-        6)
-            check_censor
+        3)
+            echo ""
+            apply_basic_optimization
+            echo ""
+            read -rsn1 -p "  Нажмите любую клавишу для возврата в меню..."
             ;;
-        7)
+        4)
             remove_mekopr
             ;;
-        8)
+        5)
+            echo ""
+            update_script
+            ;;
+        6)
+            open_proxy_menu
+            ;;
+        7)
             echo ""
             remove_iptables_rules
             echo ""
@@ -1288,6 +1251,18 @@ main_menu() {
             ;;
         esac
     done
+}
+
+# ── Функция открытия меню прокси ──────────────────────────
+open_proxy_menu() {
+    local PROXY_MENU_SCRIPT="/opt/mtpr-simple/proxys/proxymenu.sh"
+    if [ -f "$PROXY_MENU_SCRIPT" ]; then
+        exec "$PROXY_MENU_SCRIPT"
+    else
+        log_error "Файл $PROXY_MENU_SCRIPT не найден"
+        echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+        read -rsn1
+    fi
 }
 
 # ── Обновление скрипта ──────────────────────────────────────────
