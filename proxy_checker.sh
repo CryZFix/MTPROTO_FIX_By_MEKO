@@ -40,10 +40,8 @@ print_warning() {
 
 # ── Проверка зависимостей ──────────────────────────────────
 check_dependencies() {
-    print_header "ПРОВЕРКА ЗАВИСИМОСТЕЙ v3"
-    
-    apt update -qq 2>/dev/null || true
-    
+    print_header "ПРОВЕРКА ЗАВИСИМОСТЕЙ v4"
+        
     # Устанавливаем build-essential если нет
     if ! command -v cc &> /dev/null; then
         print_info "Устанавливаю build-essential..."
