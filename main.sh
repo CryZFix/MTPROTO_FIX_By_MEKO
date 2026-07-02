@@ -1048,7 +1048,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.38${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.39${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
@@ -1285,7 +1285,7 @@ main_menu() {
         echo -e "  ${CYAN}[4]${NC}  ${NC}${BOLD}Обновить скрипт${NC}"
         echo -e "  ${CYAN}[5]${NC}  $item2"
         echo -e "  ${CYAN}[6]${NC}  ${NC}${BOLD}Проверить ограничения на сервере${NC}"
-        echo -e "  ${CYAN}[7]${NC}  ${NC}${BOLD}Проверить домен прокси на ios-валидность(в разработке)${NC}"
+        echo -e "  ${CYAN}[7]${NC}  ${NC}${BOLD}Проверить домен прокси на ios-валидность${NC}"
         echo -e "  ${CYAN}[8]${NC}  ${RED}${BOLD}Полное удаление MEKOpr${NC}"
         
         if [ "$show_iptables_rules" = true ]; then
@@ -1355,10 +1355,32 @@ main_menu() {
             ;;
         7)
             echo ""
-            CHECKER_SCRIPT="/opt/mtpr-simple/proxy_checker.sh"
+            # Проверяем версию OpenSSL
+            OPENSSL_VERSION=$(openssl version 2>/dev/null | awk '{print $2}')
+            REQUIRED_VERSION="3.5"
+            
+            if [ -z "$OPENSSL_VERSION" ]; then
+                log_error "Не удалось определить версию OpenSSL"
+                echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+                read -rsn1
+                continue
+            fi
+            
+            # Сравниваем версии (простое сравнение строк, работает для 3.x.x)
+            if [[ "$(printf '%s\n' "$REQUIRED_VERSION" "$OPENSSL_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]]; then
+                echo ""
+                echo -e "  ${RED}${BOLD}❌ Данная функция доступна только на ОС с OpenSSL 3.5 и выше${NC}"
+                echo -e "  ${YELLOW}Ваша версия OpenSSL: ${OPENSSL_VERSION}${NC}"
+                echo ""
+                echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+                read -rsn1
+                continue
+            fi
+            
+            CHECKER_SCRIPT="/opt/mtpr-simple/proxy_checker.py"
             if [ -f "$CHECKER_SCRIPT" ]; then
                 chmod +x "$CHECKER_SCRIPT"
-                exec "$CHECKER_SCRIPT"
+                python3 "$CHECKER_SCRIPT"
             else
                 log_error "Файл $CHECKER_SCRIPT не найден"
                 echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
