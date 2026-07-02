@@ -1285,7 +1285,7 @@ main_menu() {
         echo -e "  ${CYAN}[4]${NC}  ${NC}${BOLD}Обновить скрипт${NC}"
         echo -e "  ${CYAN}[5]${NC}  $item2"
         echo -e "  ${CYAN}[6]${NC}  ${NC}${BOLD}Проверить ограничения на сервере${NC}"
-        echo -e "  ${CYAN}[7]${NC}  ${NC}${BOLD}Проверить прокси на PQ-безопасность${NC}"
+        echo -e "  ${CYAN}[7]${NC}  ${NC}${BOLD}Проверить домен прокси на ios-валидность(в разработке)${NC}"
         echo -e "  ${CYAN}[8]${NC}  ${RED}${BOLD}Полное удаление MEKOpr${NC}"
         
         if [ "$show_iptables_rules" = true ]; then
