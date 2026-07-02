@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# =============================================
-# PQC Check Script для Ubuntu 24
-# Проверка поддержки X25519MLKEM768
-# =============================================
+# PQC Check Scrip
+
 
 set -e
 
@@ -40,8 +38,9 @@ print_warning() {
 
 # ── Проверка зависимостей ──────────────────────────────────
 check_dependencies() {
-    print_header "ПРОВЕРКА ЗАВИСИМОСТЕЙ v4"
-        
+    print_header "ПРОВЕРКА ЗАВИСИМОСТЕЙ V5"
+
+    
     # Устанавливаем build-essential если нет
     if ! command -v cc &> /dev/null; then
         print_info "Устанавливаю build-essential..."
@@ -93,8 +92,6 @@ check_pqfetch() {
 
 # ── Установка Rust и pqfetch ──────────────────────────────
 install_pqfetch() {
-    print_header "УСТАНОВКА RUST И PQFECTH"
-    
     local need_rust=false
     local need_pqfetch=false
     
@@ -107,10 +104,26 @@ install_pqfetch() {
     fi
     
     if [ "$need_rust" = false ] && [ "$need_pqfetch" = false ]; then
-        print_success "Rust уже установлен"
-        print_success "pqfetch уже установлен"
         return 0
     fi
+    
+    echo ""
+    print_info "Для работы необходимо установить следующие компоненты:"
+    echo ""
+    echo -e "  ${BOLD}1. Rust${NC} — язык программирования"
+    echo -e "  ${BOLD}2. pqfetch${NC} — утилита для проверки PQ-шифров"
+    echo ""
+    echo -en "  ${BOLD}Установить компоненты?${NC} ${GREEN}[Enter/Y - да, N - нет]:${NC} "
+    read -r install_confirm
+    
+    if [[ -n "$install_confirm" && "$install_confirm" =~ ^[nN]$ ]]; then
+        echo ""
+        print_info "Возврат в главное меню..."
+        sleep 0.5
+        return 1
+    fi
+    
+    print_header "УСТАНОВКА RUST И PQFECTH"
     
     if [ "$need_rust" = true ]; then
         print_info "Устанавливаю Rust..."
@@ -131,12 +144,7 @@ install_pqfetch() {
     fi
     
     export PATH="$HOME/.cargo/bin:$PATH"
-}
-
-# ── Получение IP ────────────────────────────────────────────
-get_ip() {
-    local domain="$1"
-    nslookup $domain 2>/dev/null | grep -E 'Address: ' | grep -v '#' | awk '{print $2}' | head -1
+    return 0
 }
 
 # ── Проверка прокси ────────────────────────────────────────
@@ -162,6 +170,7 @@ check_site() {
         echo -e "${GREEN}✅ ПОДДЕРЖИВАЕТ X25519MLKEM768${NC}"
         echo "$PQFECTH_OUTPUT" | head -1
         echo ""
+        echo -e "${GREEN}━━━ ВЕРДИКТ ━━━${NC}"
         echo -e "${GREEN}🟢 PQ-безопасен (X25519MLKEM768)${NC}"
     elif echo "$PQFECTH_OUTPUT" | grep -qi "X25519"; then
         echo -e "${YELLOW}⚠️ Использует X25519 (классический)${NC}"
@@ -189,7 +198,7 @@ check_regular_tls() {
     
     echo -e "${CYAN}━━━ Обычное TLS-подключение ━━━${NC}"
     
-    # Пробуем через openssl s_client (даже старый)
+    # Пробуем через openssl s_client
     local tls_info=""
     if command -v openssl &> /dev/null; then
         tls_info=$(echo | timeout 5 openssl s_client -connect ${domain}:${port} -servername ${domain} 2>/dev/null | grep -E "Protocol|Cipher|Server Temp Key|subject=" | head -6)
@@ -218,7 +227,7 @@ check_regular_tls() {
             echo -e "${GREEN}PQ не поддерживается, но Peer Temp Key не X25519${NC}"
         fi
     else
-        # Пробуем через curl (более надёжно)
+        # Пробуем через curl
         echo -e "${YELLOW}⚠️ openssl не дал результат, пробую через curl...${NC}"
         local curl_info=$(timeout 5 curl -vI --tlsv1.3 --connect-timeout 3 "https://${domain}:${port}" 2>&1 | grep -E "SSL connection|TLS|subject" | head -5)
         
@@ -276,17 +285,26 @@ parse_and_check() {
     check_site "$domain" "$port"
 }
 
+# ── Очистка экрана ──────────────────────────────────────────
+clear_screen() {
+    clear 2>/dev/null || printf '\033[2J\033[H'
+}
+
 # ── Основная функция ────────────────────────────────────────
 main() {
-    clear
+    clear_screen
     echo ""
     echo -e "  ${BOLD}${CYAN}🔍 ПРОВЕРКА ПРОКСИ НА PQ-БЕЗОПАСНОСТЬ${NC}"
     echo -e "  ${DIM}═════════════════════════════════════════════════${NC}"
     echo ""
     
-    # Проверяем зависимости один раз
+    # Проверяем зависимости
     check_dependencies
-    install_pqfetch
+    
+    # Проверяем и устанавливаем Rust + pqfetch
+    if ! install_pqfetch; then
+        return 0
+    fi
     
     # Цикл проверки
     while true; do
@@ -326,6 +344,13 @@ main() {
             sleep 0.5
             return 0
         fi
+        
+        # Очищаем экран после Enter
+        clear_screen
+        echo ""
+        echo -e "  ${BOLD}${CYAN}🔍 ПРОВЕРКА ПРОКСИ НА PQ-БЕЗОПАСНОСТЬ${NC}"
+        echo -e "  ${DIM}═════════════════════════════════════════════════${NC}"
+        echo ""
     done
 }
 
