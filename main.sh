@@ -1048,7 +1048,7 @@ get_online_count() {
 show_header() {
     clear_screen
     echo ""
-    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.36${NC}"
+    echo -e "  ${BOLD}MTProto Fixer by MEKO v1.38${NC}"
     echo -e "  ${DIM}===========================${NC}"
     echo ""
 
@@ -1285,10 +1285,11 @@ main_menu() {
         echo -e "  ${CYAN}[4]${NC}  ${NC}${BOLD}Обновить скрипт${NC}"
         echo -e "  ${CYAN}[5]${NC}  $item2"
         echo -e "  ${CYAN}[6]${NC}  ${NC}${BOLD}Проверить ограничения на сервере${NC}"
-        echo -e "  ${CYAN}[7]${NC}  ${RED}${BOLD}Полное удаление MEKOpr${NC}"
+        echo -e "  ${CYAN}[7]${NC}  ${NC}${BOLD}Проверить прокси на PQ-безопасность${NC}"
+        echo -e "  ${CYAN}[8]${NC}  ${RED}${BOLD}Полное удаление MEKOpr${NC}"
         
         if [ "$show_iptables_rules" = true ]; then
-            echo -e "  ${RED}[8]${NC}  Удалить правила iptables-persistent"
+            echo -e "  ${RED}[9]${NC}  Удалить правила iptables-persistent"
         fi
         
         echo -e "  ${CYAN}[0]${NC}  Выход"
@@ -1347,14 +1348,27 @@ main_menu() {
             echo ""
             apply_optimization
             echo ""
+            read -rsn1 -p "  Нажмите любую клавишу для возврата в меню..."
             ;;
         6)
             check_censor
             ;;
         7)
-            remove_mekopr
+            echo ""
+            CHECKER_SCRIPT="/opt/mtpr-simple/proxy_checker.sh"
+            if [ -f "$CHECKER_SCRIPT" ]; then
+                chmod +x "$CHECKER_SCRIPT"
+                exec "$CHECKER_SCRIPT"
+            else
+                log_error "Файл $CHECKER_SCRIPT не найден"
+                echo -e "  ${GRAY}Нажмите любую клавишу для возврата в меню...${NC}"
+                read -rsn1
+            fi
             ;;
         8)
+            remove_mekopr
+            ;;
+        9)
             echo ""
             remove_iptables_rules
             echo ""
