@@ -2,7 +2,7 @@
 set -e
 
 BASE_URL="https://raw.githubusercontent.com/Liafanx/MTPROTO_FIX_By_MEKO/main"
-FILES=("main.sh" "proxys/proxymenu.sh" "proxys/telemt1.sh" "proxys/mtprotozig1.sh")
+FILES=("main.sh" "proxys/proxymenu.sh" "proxys/telemt1.sh" "proxys/mtprotozig1.sh" "proxy_checker.sh")
 
 # ── Цвета ─────────────────────────────────────────────────────
 GREEN='\033[0;32m'
