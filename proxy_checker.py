@@ -125,10 +125,10 @@ def check_one(domain):
         port = "443"
 
     connect = f"{host}:{port}"
-    lines = [f"\n{BOLD}🔎 {host}:{port}{NC}"]
+    lines = [f"{BOLD}🔎 {host}:{port}{NC}"]
 
     ip_str = resolve_ip(host)
-    lines.append(f"\n{CYAN}🌐 IP: {NC}{ip_str}")
+    lines.append(f"{CYAN}🌐 IP: {NC}{ip_str}")
     lines.append("")
 
     # PQ-проверка
@@ -154,8 +154,6 @@ def check_one(domain):
             lines.append(f"  Протокол: {proto}")
         if cipher:
             lines.append(f"  Шифронабор: {cipher}")
-        if temp:
-            lines.append(f"  Peer Temp Key: {temp}")
         if cert_cn:
             lines.append(f"  Сертификат: {cert_cn}")
         if sig:
@@ -239,8 +237,6 @@ def check_one(domain):
         lines.append(f"  Протокол: {proto}")
     if cipher:
         lines.append(f"  Шифронабор: {cipher}")
-    if temp:
-        lines.append(f"  Peer Temp Key: {temp}")
     if cert_cn:
         lines.append(f"  Сертификат: {cert_cn}")
     if sig:
@@ -291,12 +287,12 @@ def main():
     while True:
         os.system('clear' if os.name == 'posix' else 'cls')
         print("")
-        print(f"  {BOLD}{CYAN}🔍 ПРОВЕРКА TLS И PQ-БЕЗОПАСНОСТЬ{NC}")
+        print(f"  {BOLD}{CYAN}🔍 ПРОВЕРКА TLS И PQ-БЕЗОПАСНОСТЬ v1.0 {NC}")
         print(f"  {DIM}═════════════════════════════════════════════════{NC}")
         print("")
         print("  Введите домен или ссылку для проверки:")
         print(f"  {DIM}Примеры:{NC}")
-        print(f"  {DIM}  • tg://proxy?server=212.8.229.241&port=443&secret=...{NC}")
+        print(f"  {DIM}  • tg://proxy?server=212.8.*.*&port=443&secret=...{NC}")
         print(f"  {DIM}  • 212.8.229.241:443{NC}")
         print(f"  {DIM}  • rutube.ru{NC}")
         print(f"  {DIM}  • 0, n или q — выход{NC}")
