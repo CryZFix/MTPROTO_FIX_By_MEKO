@@ -40,7 +40,7 @@ print_warning() {
 
 # ── Проверка зависимостей ──────────────────────────────────
 check_dependencies() {
-    print_header "ПРОВЕРКА ЗАВИСИМОСТЕЙ v2"
+    print_header "ПРОВЕРКА ЗАВИСИМОСТЕЙ v3"
     
     apt update -qq 2>/dev/null || true
     
@@ -72,17 +72,13 @@ check_dependencies() {
 
 # ── Проверка наличия Rust и pqfetch ────────────────────────
 check_rust_pqfetch() {
-    # Проверяем Rust через ~/.cargo/bin/rustc
     if [ -f "$HOME/.cargo/bin/rustc" ]; then
         export PATH="$HOME/.cargo/bin:$PATH"
         return 0
     fi
-    
-    # Проверяем через which
     if command -v rustc &> /dev/null; then
         return 0
     fi
-    
     return 1
 }
 
@@ -91,11 +87,9 @@ check_pqfetch() {
         export PATH="$HOME/.cargo/bin:$PATH"
         return 0
     fi
-    
     if command -v pqfetch &> /dev/null; then
         return 0
     fi
-    
     return 1
 }
 
@@ -141,6 +135,12 @@ install_pqfetch() {
     export PATH="$HOME/.cargo/bin:$PATH"
 }
 
+# ── Получение IP ────────────────────────────────────────────
+get_ip() {
+    local domain="$1"
+    nslookup $domain 2>/dev/null | grep -E 'Address: ' | grep -v '#' | awk '{print $2}' | head -1
+}
+
 # ── Проверка прокси ────────────────────────────────────────
 check_site() {
     local domain="$1"
@@ -153,42 +153,90 @@ check_site() {
     nslookup $domain 2>/dev/null | grep -E 'Address: ' | grep -v '#' | awk '{print $2}' | head -3 | while read ip; do
         echo "  $ip"
     done
+    echo ""
     
-    # PQ-проверка
-    echo -e "\n${CYAN}━━━ PQ-подключение (X25519MLKEM768) ━━━${NC}"
+    # ── PQ-проверка через pqfetch ──────────────────────────
+    echo -e "${CYAN}━━━ PQ-подключение (X25519MLKEM768) ━━━${NC}"
     export PATH="$HOME/.cargo/bin:$PATH"
     PQFECTH_OUTPUT=$(pqfetch $domain 2>&1 || true)
     
     if echo "$PQFECTH_OUTPUT" | grep -qi "X25519MLKEM768"; then
         echo -e "${GREEN}✅ ПОДДЕРЖИВАЕТ X25519MLKEM768${NC}"
         echo "$PQFECTH_OUTPUT" | head -1
+        echo ""
+        echo -e "${GREEN}🟢 PQ-безопасен (X25519MLKEM768)${NC}"
     elif echo "$PQFECTH_OUTPUT" | grep -qi "X25519"; then
         echo -e "${YELLOW}⚠️ Использует X25519 (классический)${NC}"
         echo "$PQFECTH_OUTPUT" | head -1
+        echo ""
+        # Переходим к обычному TLS
+        check_regular_tls "$domain" "$port" "X25519"
     else
-        echo -e "${RED}❌ Не поддерживается или ошибка${NC}"
-        echo "$PQFECTH_OUTPUT" | head -3
+        echo -e "${RED}❌ PQ не поддерживается${NC}"
+        # Показываем причину если есть
+        echo "$PQFECTH_OUTPUT" | head -3 | grep -E "error|alert|invalid" | while read line; do
+            echo -e "  ${GRAY}${line}${NC}"
+        done
+        echo ""
+        # Переходим к обычному TLS
+        check_regular_tls "$domain" "$port" ""
+    fi
+}
+
+# ── Проверка обычного TLS ───────────────────────────────────
+check_regular_tls() {
+    local domain="$1"
+    local port="$2"
+    local pq_status="$3"
+    
+    echo -e "${CYAN}━━━ Обычное TLS-подключение ━━━${NC}"
+    
+    # Пробуем через openssl s_client (даже старый)
+    local tls_info=""
+    if command -v openssl &> /dev/null; then
+        tls_info=$(echo | timeout 5 openssl s_client -connect ${domain}:${port} -servername ${domain} 2>/dev/null | grep -E "Protocol|Cipher|Server Temp Key|subject=" | head -6)
     fi
     
-    # Обычное TLS
-    echo -e "\n${CYAN}━━━ Обычное TLS-подключение ━━━${NC}"
-    TLS_INFO=$(echo | openssl s_client -connect $domain:$port -servername $domain 2>/dev/null | grep -E "Protocol|Cipher|Server Temp Key" | head -4)
-    
-    if [ -n "$TLS_INFO" ]; then
-        echo "$TLS_INFO"
+    if [ -n "$tls_info" ]; then
+        echo -e "${GREEN}🔹 Статус: OK${NC}"
+        echo "$tls_info"
+        echo ""
+        
+        # Проверяем наличие X25519 в Server Temp Key
+        if echo "$tls_info" | grep -qi "X25519"; then
+            if [ "$pq_status" = "X25519" ] || [ -z "$pq_status" ]; then
+                echo -e "${RED}━━━ ВЕРДИКТ ━━━${NC}"
+                echo -e "${RED}🔴 МАРКЕР: ДА${NC}"
+                echo -e "${RED}PQ не поддерживается + Peer Temp Key = X25519${NC}"
+                echo -e "${YELLOW}⚠️ Риск блокировки на ТСПУ для iOS клиентов${NC}"
+            else
+                echo -e "${GREEN}━━━ ВЕРДИКТ ━━━${NC}"
+                echo -e "${GREEN}🟢 Маркер: НЕТ${NC}"
+                echo -e "${GREEN}PQ поддерживается${NC}"
+            fi
+        else
+            echo -e "${GREEN}━━━ ВЕРДИКТ ━━━${NC}"
+            echo -e "${GREEN}🟢 Маркер: НЕТ${NC}"
+            echo -e "${GREEN}PQ не поддерживается, но Peer Temp Key не X25519${NC}"
+        fi
     else
-        echo -e "${RED}❌ Не удалось подключиться по TLS${NC}"
-    fi
-    
-    # Вердикт
-    echo -e "\n${CYAN}━━━ ВЕРДИКТ ━━━${NC}"
-    if echo "$PQFECTH_OUTPUT" | grep -qi "X25519MLKEM768"; then
-        echo -e "${GREEN}🟢 PQ-безопасен (X25519MLKEM768)${NC}"
-    elif echo "$PQFECTH_OUTPUT" | grep -qi "X25519"; then
-        echo -e "${YELLOW}🟡 Использует X25519 (не PQ)${NC}"
-        echo -e "${YELLOW}⚠️ Риск блокировки на ТСПУ для iOS клиентов${NC}"
-    else
-        echo -e "${RED}🔴 Не поддерживает PQ или ошибка${NC}"
+        # Пробуем через curl (более надёжно)
+        echo -e "${YELLOW}⚠️ openssl не дал результат, пробую через curl...${NC}"
+        local curl_info=$(timeout 5 curl -vI --tlsv1.3 --connect-timeout 3 "https://${domain}:${port}" 2>&1 | grep -E "SSL connection|TLS|subject" | head -5)
+        
+        if [ -n "$curl_info" ]; then
+            echo -e "${GREEN}🔹 Статус: OK${NC}"
+            echo "$curl_info"
+            echo ""
+            echo -e "${GREEN}━━━ ВЕРДИКТ ━━━${NC}"
+            echo -e "${GREEN}🟢 Маркер: НЕТ${NC}"
+            echo -e "${GREEN}TLS подключение установлено${NC}"
+        else
+            echo -e "${RED}❌ Не удалось подключиться по TLS${NC}"
+            echo ""
+            echo -e "${RED}━━━ ВЕРДИКТ ━━━${NC}"
+            echo -e "${RED}🔴 Не удалось проверить${NC}"
+        fi
     fi
     echo ""
 }
@@ -202,7 +250,6 @@ parse_and_check() {
     
     # Проверяем, является ли входная строка Telegram-ссылкой
     if echo "$input" | grep -qi "t.me/proxy\|tg://proxy"; then
-        # Извлекаем server=... и port=...
         domain=$(echo "$input" | grep -oP 'server=\K[^&]+' 2>/dev/null || echo "")
         port=$(echo "$input" | grep -oP 'port=\K[^&]+' 2>/dev/null || echo "443")
         secret=$(echo "$input" | grep -oP 'secret=\K[^&]+' 2>/dev/null || echo "")
@@ -218,6 +265,7 @@ parse_and_check() {
         if [ -n "$secret" ]; then
             echo -e "  ${BOLD}Секрет:${NC} ${secret:0:20}... (обрезано)"
         fi
+        echo ""
     else
         # Обычный домен или IP:порт
         domain="$input"
