@@ -338,9 +338,16 @@ def check_one(domain):
                 if verify:
                     lines.append(f"  Верификация: {verify}")
                 
-                # Вердикт для детального IP
+                # ── ИСПРАВЛЕННЫЙ ВЕРДИКТ ДЛЯ ДЕТАЛЬНОГО IP ──
                 lines.append("")
-                if temp.startswith("X25519"):
+                
+                # Проверяем, поддерживается ли PQ для детального IP
+                pq_supported_for_detail = "CONNECTION ESTABLISHED" in detail_pq
+                
+                if pq_supported_for_detail:
+                    lines.append(f"{GREEN}━━━ ВЕРДИКТ ━━━{NC}")
+                    lines.append(f"{GREEN}🟢 Маркер: НЕТ — сервер принимает X25519MLKEM768{NC}")
+                elif temp and temp.startswith("X25519"):
                     lines.append(f"{RED}━━━ ВЕРДИКТ ━━━{NC}")
                     lines.append(f"{RED}🔴 МАРКЕР: ДА{NC}")
                     lines.append(f"{RED}PQ не поддерживается + Peer Temp Key = X25519{NC}")
@@ -514,7 +521,7 @@ def main():
     while True:
         os.system('clear' if os.name == 'posix' else 'cls')
         print("")
-        print(f"  {BOLD}{CYAN}🔍 ПРОВЕРКА ПРОКСИ,ДОМЕНА,АЙПИ НА ВАЛИД ЧЕРЕЗ TLS И PQ-БЕЗОПАСНОСТЬ v1.14 {NC}")
+        print(f"  {BOLD}{CYAN}🔍 ПРОВЕРКА ПРОКСИ,ДОМЕНА,АЙПИ НА ВАЛИД ЧЕРЕЗ TLS И PQ-БЕЗОПАСНОСТЬ v1.15 {NC}")
         print(f"  {DIM}═════════════════════════════════════════════════{NC}")
         print("")
         print("  Краткое пояснение:")
